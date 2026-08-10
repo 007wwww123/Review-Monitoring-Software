@@ -1,0 +1,23 @@
+{
+  "albert_name_or_path": "albert/albert-base-v2",
+  "max_length": 256,
+  "semantic_num_labels": 4,
+  "behavior_num_labels": 5,
+  "behavior_type_num_labels": 3,
+  "behavior_input_size": 10,
+  "behavior_hidden_size": 128,
+  "behavior_num_layers": 1,
+  "behavior_dropout": 0.2,
+  "fusion_hidden_size": 256,
+  "fusion_dropout": 0.2,
+  "classifier_dropout": 0.1,
+  "use_behavior_attention": true,
+  "real_exit_threshold": 0.92,
+  "semantic_exit_threshold": 0.85,
+  "behavior_trigger_threshold": 0.65,
+  "uncertainty_entropy_threshold": 0.55,
+  "minimum_history": 1,
+  "maximum_history": 30,
+  "semantic_labels": ["real", "misleading", "exaggerated", "advertising"],
+  "behavior_labels": ["normal", "review_manipulation", "crowdturfing", "bot_like", "insufficient_evidence"]
+}
