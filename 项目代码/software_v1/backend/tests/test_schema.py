@@ -22,7 +22,7 @@ def test_only_seven_core_tables_are_declared():
 
 def test_review_and_result_can_be_traced_to_model(session):
     user = SysUser(username="reviewer", password_hash="argon2-hash")
-    model = ModelVersion(version="v1.0.0", model_name="albert-lstm-fusion", checkpoint_path="/controlled/model.pt", checkpoint_sha256="a" * 64, tokenizer_name="albert/albert-base-v2", config_json={}, dataset_manifest_json={})
+    model = ModelVersion(version="v1.0.0", model_name="albert-gru-fusion", checkpoint_path="/controlled/model.pt", checkpoint_sha256="a" * 64, tokenizer_name="albert/albert-base-v2", config_json={}, dataset_manifest_json={})
     review = ReviewEvent(source_type="online", review_text="sample", text_sha256="b" * 64)
     task = DetectionTask(task_no="task-1", task_type="single", creator=user, model_version=model)
     result = DetectionResult(task=task, review_event_id=1, model_version=model, authenticity_label="fake", authenticity_probability=0.9, semantic_label="real", behavior_label="insufficient_evidence", behavior_available=False, risk_level="unknown")

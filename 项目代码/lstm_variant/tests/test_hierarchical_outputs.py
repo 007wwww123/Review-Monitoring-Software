@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from spam_cascade.modeling import (
-    BehaviorLSTMClassifier,
+    BehaviorGRUClassifier,
     behavior_relative_probabilities,
     semantic_relative_probabilities,
 )
@@ -11,9 +11,9 @@ from spam_cascade.config import CascadeConfig
 
 
 class HierarchicalProbabilityTest(unittest.TestCase):
-    def test_lstm_behavior_output_contract(self) -> None:
+    def test_gru_behavior_output_contract(self) -> None:
         config = CascadeConfig()
-        model = BehaviorLSTMClassifier(config).eval()
+        model = BehaviorGRUClassifier(config).eval()
         sequence = torch.randn(2, 4, config.behavior_input_size)
         lengths = torch.tensor([4, 2])
         available = torch.tensor([1.0, 1.0])
@@ -23,6 +23,12 @@ class HierarchicalProbabilityTest(unittest.TestCase):
         self.assertEqual(tuple(output.type_logits.shape), (2, 3))
         self.assertEqual(tuple(output.relative_probabilities.shape), (2, 5))
         self.assertEqual(tuple(output.pooled_output.shape), (2, config.behavior_hidden_size))
+
+    def test_gru_state_uses_gru_parameter_names(self) -> None:
+        model = BehaviorGRUClassifier(CascadeConfig()).eval()
+        keys = set(model.state_dict())
+        self.assertTrue(any(key.startswith("gru.") for key in keys))
+        self.assertFalse(any(key.startswith("lstm.") for key in keys))
 
     def test_semantic_match_scores_are_independent(self) -> None:
         authenticity = torch.tensor([[0.0, 2.0]])

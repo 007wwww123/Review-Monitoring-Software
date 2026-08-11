@@ -23,7 +23,7 @@ from spam_cascade.data import (
     collate_fusion,
     load_reviews,
 )
-from spam_cascade.modeling import AlbertSemanticClassifier, BehaviorLSTMClassifier, CascadeDetector
+from spam_cascade.modeling import AlbertSemanticClassifier, BehaviorGRUClassifier, CascadeDetector
 from spam_cascade.training import (
     append_jsonl,
     balanced_class_weights,
@@ -321,7 +321,7 @@ def train_behavior(args: argparse.Namespace, config: CascadeConfig, device: torc
         else:
             print("behavior_type_class_weights=disabled_no_type_labels")
 
-    model = BehaviorLSTMClassifier(config).to(device)
+    model = BehaviorGRUClassifier(config).to(device)
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     updates_per_epoch = math.ceil(len(loader) / args.gradient_accumulation_steps)
     total_updates = max(updates_per_epoch * args.epochs, 1)
@@ -414,7 +414,7 @@ def train_behavior(args: argparse.Namespace, config: CascadeConfig, device: torc
                 epochs_without_improvement,
                 metadata,
             )
-            save_checkpoint(model, output_directory, "behavior_lstm_best")
+            save_checkpoint(model, output_directory, "behavior_gru_best")
         else:
             epochs_without_improvement += 1
         save_training_checkpoint(
@@ -446,7 +446,7 @@ def train_behavior(args: argparse.Namespace, config: CascadeConfig, device: torc
         ):
             print(f"early_stopping epoch={epoch} best_score={best_score:.6f}")
             break
-    save_checkpoint(model, output_directory, "behavior_lstm_last")
+    save_checkpoint(model, output_directory, "behavior_gru_last")
 
 
 def _load_module_weights(path: str, module: torch.nn.Module, device: torch.device) -> None:

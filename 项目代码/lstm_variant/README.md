@@ -3,16 +3,16 @@
 本项目实现三级检测流程：
 
 1. ALBERT对评论文本执行真实性判断，并生成四维语义相对匹配度；
-2. LSTM对用户时序行为执行正常/异常二分类，并在异常条件下生成三种行为类型匹配度；
+2. GRU对用户时序行为执行正常/异常二分类，并在异常条件下生成三种行为类型匹配度；
 3. 两路表示投影到统一的256维空间，通过缺失感知向量门控完成融合。
 
-## LSTM来源说明
+## GRU来源说明
 
 行为分支接收的是每个时间步的10维数值型行为特征，而不是文本Token。因此本变体使用
-PyTorch官方`torch.nn.LSTM`构建与原GRU分支等价的时序编码器，并在本项目行为数据上从头训练。
-Hugging Face继续用于下载ALBERT文本预训练权重；Hub上的通用文本LSTM检查点与本项目10维行为输入不兼容，不能直接替换。
+PyTorch官方`torch.nn.GRU`构建时序编码器，并在本项目行为数据上从头训练。
+Hugging Face继续用于下载ALBERT文本预训练权重；Hub上的通用文本GRU检查点与本项目10维行为输入不兼容，不能直接替换。
 
-训练完成后，可以把`behavior_lstm_best.pt`上传到Hugging Face Hub，之后再把它作为本项目专用的LSTM行为检查点下载和复用。
+训练完成后，可以把`behavior_gru_best.pt`作为本项目专用的GRU行为检查点保存和复用。
 
 ## 层级输出
 
@@ -44,20 +44,20 @@ user_id, prod_id, rating, label, date, text
 
 `review_id`可选；若TSV中没有该列，加载器会按文件内行号自动生成。`user_id`仍然是构建真实时序历史所必需的字段。
 
-LSTM正常/异常二分类直接使用原始`label`：
+GRU正常/异常二分类直接使用原始`label`：
 
 ```text
 label=1  -> normal=0
 label=-1 -> abnormal=1
 ```
 
-因此只有原始二分类标签的数据也能直接训练LSTM。训练细粒度辅助头时才额外需要：
+因此只有原始二分类标签的数据也能直接训练GRU。训练细粒度辅助头时才额外需要：
 
 ```text
 semantic_type, behavior_type
 ```
 
-缺少`behavior_type`时，三种异常行为类型辅助损失会自动关闭，但LSTM二分类训练不受影响。此时模型仍保留行为类型匹配度输出接口，但这些细类分数没有经过监督校准，不能直接作为可靠类别结论。
+缺少`behavior_type`时，三种异常行为类型辅助损失会自动关闭，但GRU二分类训练不受影响。此时模型仍保留行为类型匹配度输出接口，但这些细类分数没有经过监督校准，不能直接作为可靠类别结论。
 
 `risk_source`只能作为最终派生结果，不能作为模型输入。行为特征严格按用户和时间排序，目标样本不能读取未来事件。
 
@@ -78,7 +78,7 @@ python -u train.py \
 
 现有E0权重仍可加载。模型继续保留四行`semantic_head`参数，但推理时只使用后三行计算虚假条件类型概率。
 
-## 第二层LSTM训练
+## 第二层GRU训练
 
 ```bash
 python -u train.py \
@@ -108,7 +108,7 @@ python -u train.py \
 
 ## 门控融合训练
 
-完成ALBERT和LSTM训练后执行：
+完成ALBERT和GRU训练后执行：
 
 ```bash
 python -u train.py \
@@ -117,7 +117,7 @@ python -u train.py \
   --val-data /path/to/val.tsv \
   --config configs/base.json \
   --semantic-checkpoint checkpoints/semantic/semantic_albert_best.pt \
-  --behavior-checkpoint checkpoints/behavior-binary/behavior_lstm_best.pt \
+  --behavior-checkpoint checkpoints/behavior-binary/behavior_gru_best.pt \
   --output checkpoints/fusion \
   --epochs 5 \
   --batch-size 16 \

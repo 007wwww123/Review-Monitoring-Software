@@ -19,7 +19,7 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .modeling import AlbertSemanticClassifier, BehaviorLSTMClassifier, CascadeDetector
+from .modeling import AlbertSemanticClassifier, BehaviorGRUClassifier, CascadeDetector
 
 
 @dataclass
@@ -396,7 +396,7 @@ def evaluate_semantic(
 
 
 def train_behavior_epoch(
-    model: BehaviorLSTMClassifier,
+    model: BehaviorGRUClassifier,
     loader: DataLoader,
     optimizer: Optimizer,
     device: torch.device,
@@ -485,7 +485,7 @@ def train_behavior_epoch(
 
 @torch.no_grad()
 def evaluate_behavior(
-    model: BehaviorLSTMClassifier,
+    model: BehaviorGRUClassifier,
     loader: DataLoader,
     device: torch.device,
     binary_class_weights: Optional[Tensor] = None,

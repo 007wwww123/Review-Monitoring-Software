@@ -6,7 +6,7 @@
 
 ## 1. 项目定位
 
-本项目拟将已经训练完成的 ALBERT + LSTM + 自适应门控融合模型封装为可部署的虚假评论检测系统。系统面向评论审核与风险分析场景，提供单条检测、批量检测、检测记录、模型评估、证据展示和报告导出功能。
+本项目拟将已经训练完成的 ALBERT + GRU + 自适应门控融合模型封装为可部署的虚假评论检测系统。系统面向评论审核与风险分析场景，提供单条检测、批量检测、检测记录、模型评估、证据展示和报告导出功能。
 
 V1.0 采用浏览器/服务器（B/S）架构。模型在 Linux GPU 服务器本地运行，用户通过浏览器访问系统，不依赖 OpenAI 等第三方在线 AI API。
 
@@ -16,7 +16,7 @@ README 只描述当前真实状态，避免软件说明、界面和实际代码�
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| LSTM 融合模型冻结基线 | 已完成 | 保存在 `../lstm_variant/`，不得由应用开发直接修改 |
+| GRU 融合模型冻结基线 | 已完成 | 保存在 `../lstm_variant/`，不得由应用开发直接修改 |
 | `spam_cascade` 模型核心副本 | 已完成 | 保存在 `model_core/spam_cascade/` |
 | 模型基础配置 | 已完成 | `configs/base.json` |
 | FastAPI 后端 | 待实现 | 当前目录只有骨架 |
@@ -31,7 +31,7 @@ README 只描述当前真实状态，避免软件说明、界面和实际代码�
 ```mermaid
 flowchart LR
     A["评论文本"] --> B["ALBERT 语义编码"]
-    C["用户历史评论"] --> D["LSTM 时序行为编码"]
+    C["用户历史评论"] --> D["GRU 时序行为编码"]
     B --> E["自适应门控融合"]
     D --> E
     E --> F["真实/虚假最终判断"]
@@ -66,7 +66,7 @@ flowchart LR
 
 | 层次 | 技术 |
 | --- | --- |
-| 模型与推理 | Python、PyTorch、Transformers、ALBERT、LSTM |
+| 模型与推理 | Python、PyTorch、Transformers、ALBERT、GRU |
 | 后端 | FastAPI、Pydantic、SQLAlchemy、Alembic |
 | 前端 | Vue 3、TypeScript、Element Plus、ECharts |
 | 数据库 | MySQL 8.0，字符集 `utf8mb4` |
@@ -177,4 +177,3 @@ GET  /api/v1/reports/{id}
 - 上传文件必须限制类型、体积和保存路径；
 - 模型路径必须来自受控配置，禁止通过请求加载任意服务器文件；
 - 检测结果属于辅助审核建议，不代替人工事实认定。
-

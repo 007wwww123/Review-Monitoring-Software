@@ -103,7 +103,7 @@ class AlbertSemanticClassifier(nn.Module):
     """First-stage semantic classifier.
 
     ALBERT is responsible for both authenticity screening and language-oriented
-    fine-grained classification. LSTM is deliberately not applied to token
+    fine-grained classification. GRU is deliberately not applied to token
     embeddings; the two stages retain separate responsibilities.
     """
 
@@ -157,13 +157,13 @@ class TemporalAttention(nn.Module):
         return pooled, weights
 
 
-class BehaviorLSTMClassifier(nn.Module):
+class BehaviorGRUClassifier(nn.Module):
     """Hierarchical behavior classifier over chronological user events."""
 
     def __init__(self, config: CascadeConfig) -> None:
         super().__init__()
         recurrent_dropout = config.behavior_dropout if config.behavior_num_layers > 1 else 0.0
-        self.lstm = nn.LSTM(
+        self.gru = nn.GRU(
             input_size=config.behavior_input_size,
             hidden_size=config.behavior_hidden_size,
             num_layers=config.behavior_num_layers,
@@ -195,7 +195,7 @@ class BehaviorLSTMClassifier(nn.Module):
             batch_first=True,
             enforce_sorted=False,
         )
-        packed_states, (hidden, _) = self.lstm(packed)
+        packed_states, hidden = self.gru(packed)
         states, _ = pad_packed_sequence(
             packed_states,
             batch_first=True,
@@ -290,7 +290,7 @@ class GatedFusionClassifier(nn.Module):
         return FusionOutput(
             authenticity_logits=authenticity_logits,
             semantic_type_logits=semantic_type_logits,
-            # Text matching is computed before LSTM and carried through fusion
+            # Text matching is computed before GRU and carried through fusion
             # unchanged as auxiliary evidence, not as the final authenticity.
             semantic_relative_probabilities=semantic.semantic_match_scores,
             fused_output=fused,
@@ -310,7 +310,7 @@ class CascadeDetector(nn.Module):
         config.validate()
         self.config = config
         self.semantic = AlbertSemanticClassifier(config)
-        self.behavior = BehaviorLSTMClassifier(config)
+        self.behavior = BehaviorGRUClassifier(config)
         self.fusion = GatedFusionClassifier(config, self.semantic.encoder.config.hidden_size)
 
     def semantic_forward(self, **batch: Tensor) -> SemanticOutput:

@@ -36,7 +36,7 @@ def normalized_entropy(probabilities: Iterable[float]) -> float:
 
 
 class DecisionRouter:
-    """Mandatory dual-stream router; every review reaches LSTM and fusion."""
+    """Mandatory dual-stream router; every review reaches GRU and fusion."""
 
     def __init__(self, config: CascadeConfig) -> None:
         config.validate()
