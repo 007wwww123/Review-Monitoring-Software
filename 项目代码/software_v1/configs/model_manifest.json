@@ -1,0 +1,12 @@
+{
+  "manifest_version": "1",
+  "status": "pending_deployment_values",
+  "model": {"version": "unregistered", "name": "semantic-temporal-gated-fusion"},
+  "checkpoint": {"relative_path": "checkpoints/model.pt", "sha256": null, "config_sha256": null},
+  "tokenizer": {"name": "albert/albert-base-v2", "source": "deployment-controlled"},
+  "dataset": {"name": null, "splits": {}, "sha256": null},
+  "labels": {"semantic": ["real", "misleading", "exaggerated", "advertising"], "behavior": ["normal", "review_manipulation", "crowdturfing", "bot_like", "insufficient_evidence"], "learnable_behavior_types": ["review_manipulation", "crowdturfing", "bot_like"]},
+  "metrics": {"source": "not_available_until_reproducible_evaluation", "snapshot": null},
+  "runtime": {"python": null, "pytorch": null, "transformers": null, "numpy": null, "pandas": null, "cuda": null},
+  "git_commit": null
+}

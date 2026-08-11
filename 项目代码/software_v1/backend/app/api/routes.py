@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
+from datetime import date
 import csv, io
 from sqlalchemy.orm import Session
 
@@ -71,11 +72,12 @@ def task_results(task_id: str, page: int = Query(1, ge=1), page_size: int = Quer
 
 def _result_response(row: DetectionResult) -> ResultResponse:
     review = row.review_event
-    return ResultResponse(result_id=row.id, task_id=row.task.task_no, review_id=review.external_review_id, user_key=review.user_key, product_id=review.product_key, text_excerpt=review.review_text[:240], authenticity=row.authenticity_label, confidence=float(row.authenticity_probability), semantic_type=row.semantic_label, behavior_type=row.behavior_label, risk_source=(row.risk_source or {}).get("value", "uncertain"), action=row.recommendation or "review", model_version=row.model_version.version, explanation=row.explanation, created_at=row.created_at)
+    proxy = bool((row.explanation or {}).get("behavior", {}).get("is_proxy_task", True))
+    return ResultResponse(result_id=row.id, task_id=row.task.task_no, review_id=review.external_review_id, user_key=review.user_key, product_id=review.product_key, text_excerpt=review.review_text[:240], authenticity=row.authenticity_label, confidence=float(row.authenticity_probability), semantic_type=row.semantic_label, behavior_type=row.behavior_label, risk_source=(row.risk_source or {}).get("value", "uncertain"), action=row.recommendation or "review", model_version=row.model_version.version, data_source="real_model", is_mock=False, is_proxy_task=proxy, explanation=row.explanation, created_at=row.created_at)
 
 @router.get("/results", response_model=ResultPage, tags=["results"])
-def results(task_id: str | None = None, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
-    rows, total = DetectionService(db).repo.results(task_no=task_id, page=page, page_size=page_size)
+def results(task_id: str | None = None, keyword: str | None = Query(None, max_length=200), authenticity: str | None = Query(None), action: str | None = Query(None), date_from: date | None = Query(None), date_to: date | None = Query(None), page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
+    rows, total = DetectionService(db).repo.results(task_no=task_id, keyword=keyword, authenticity=authenticity, action=action, date_from=date_from, date_to=date_to, page=page, page_size=page_size)
     return ResultPage(items=[_result_response(row) for row in rows], page=page, page_size=page_size, total=total)
 
 @router.get("/results/{result_id}", response_model=ResultResponse, tags=["results"])

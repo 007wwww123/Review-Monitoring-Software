@@ -14,6 +14,9 @@ export interface DetectionRecordItem {
   risk_source: RiskSource;
   action: Action;
   model_version: string;
+  data_source: 'mock' | 'proxy_task' | 'real_model';
+  is_mock: boolean;
+  is_proxy_task: boolean;
   created_at: string;
 }
 

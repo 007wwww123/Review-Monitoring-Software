@@ -35,6 +35,9 @@ const mockRecords: DetectionRecordItem[] = Array.from({ length: 26 }, (_, index)
     risk_source: riskCycle[group],
     action: actionCycle[group],
     model_version: 'mock-v1.0.0',
+    data_source: 'mock',
+    is_mock: true,
+    is_proxy_task: true,
     created_at: `2026-08-${String(day).padStart(2, '0')}T${String(9 + (index % 8)).padStart(2, '0')}:20:00+08:00`,
   };
 });
