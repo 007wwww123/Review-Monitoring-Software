@@ -20,6 +20,7 @@ const page = ref(1);
 const pageSize = 10;
 const loading = ref(false);
 const errorMessage = ref('');
+const evidenceMode = new URLSearchParams(window.location.search).get('mode') === 'evidence';
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 const rangeStart = computed(() => total.value ? (page.value - 1) * pageSize + 1 : 0);
@@ -77,9 +78,9 @@ onMounted(loadRecords);
   <section class="page-content">
     <div class="page-heading records-heading">
       <div>
-        <span class="eyebrow">内容审核 / 记录查询</span>
-        <h1>检测记录</h1>
-        <p>查询单条与批量任务产生的检测结果摘要。</p>
+        <span class="eyebrow">{{ evidenceMode ? '内容审核 / 证据查询' : '内容审核 / 记录查询' }}</span>
+        <h1>{{ evidenceMode ? '结果与证据' : '检测记录' }}</h1>
+        <p>{{ evidenceMode ? '选择一条检测记录，查看模型输出、证据状态与解释边界。' : '查询单条与批量任务产生的检测结果摘要。' }}</p>
       </div>
       <span class="api-state"><span></span>Mock 数据集 · {{ total }} 条</span>
     </div>

@@ -22,13 +22,13 @@ const navigation = [
   { label: '单条评论检测', icon: FileSearch, to: '/detections/single' },
   { label: '批量检测任务', icon: Layers3, to: '/detections/batch' },
   { label: '检测记录', icon: FileClock, to: '/results', active: 'records' },
-  { label: '结果与证据', icon: ClipboardCheck, to: '/results', active: 'detail' },
+  { label: '结果与证据', icon: ClipboardCheck, to: '/results?mode=evidence', active: 'detail' },
   { label: '系统设置', icon: Settings2, to: '/settings' },
 ];
 
 function isNavigationActive(item: { to?: string; active?: string }) {
-  if (item.active === 'records') return route.path === '/results';
-  if (item.active === 'detail') return route.path.startsWith('/results/');
+  if (item.active === 'records') return route.path === '/results' && route.query.mode !== 'evidence';
+  if (item.active === 'detail') return route.path.startsWith('/results/') || (route.path === '/results' && route.query.mode === 'evidence');
   return item.to === route.path;
 }
 </script>
@@ -74,7 +74,7 @@ function isNavigationActive(item: { to?: string; active?: string }) {
         </div>
         <span class="environment-badge">开发环境</span>
       </header>
-      <RouterView />
+      <RouterView :key="route.fullPath" />
     </main>
   </div>
 </template>

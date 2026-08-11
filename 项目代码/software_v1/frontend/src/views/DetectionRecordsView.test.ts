@@ -30,6 +30,15 @@ describe('DetectionRecordsView', () => {
     expect(wrapper.get('a[href="/results/3001"]').attributes('href')).toBe('/results/3001');
   });
 
+  it('shows the evidence heading when opened from the evidence navigation', async () => {
+    window.history.pushState({}, '', '/results?mode=evidence');
+    const wrapper = mount(DetectionRecordsView, { global: { stubs: { RouterLink: true } } });
+    await settle();
+    expect(wrapper.get('h1').text()).toBe('结果与证据');
+    expect(wrapper.text()).toContain('选择一条检测记录');
+    window.history.pushState({}, '', '/results');
+  });
+
   it('filters by authenticity and action', async () => {
     const wrapper = mount(DetectionRecordsView);
     await settle();
