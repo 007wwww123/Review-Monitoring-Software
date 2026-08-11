@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
 from datetime import date, datetime, timezone
@@ -6,7 +6,7 @@ import csv, io
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.ml.adapter import ModelNotReady
+from app.ml.adapter import ModelAdapter, ModelNotReady
 from app.schemas.auth import (CurrentUserResponse, LoginRequest, LoginResponse,
                               PasswordChangeRequest, UserCreateRequest,
                               UserResponse)
@@ -21,9 +21,20 @@ from app.services.detection import DetectionService
 router = APIRouter(prefix="/api/v1")
 
 
+def runtime_adapter(request: Request) -> ModelAdapter:
+    adapter = getattr(request.app.state, "model_adapter", None)
+    if adapter is None:
+        detail = getattr(request.app.state, "model_error", None) or "model is not ready"
+        raise HTTPException(status_code=503, detail=detail)
+    return adapter
+
+
 @router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health(request: Request) -> dict[str, str]:
+    return {
+        "status": "ok" if getattr(request.app.state, "model_adapter", None) else "degraded",
+        "model": "ready" if getattr(request.app.state, "model_adapter", None) else "not_ready",
+    }
 
 @router.post("/auth/login", response_model=LoginResponse, tags=["auth"])
 def login(request: LoginRequest, db: Session = Depends(get_db)):
@@ -66,25 +77,39 @@ def create_user(request: UserCreateRequest, db: Session = Depends(get_db), _: Sy
 
 @router.post("/detections", response_model=SingleDetectionResponse, status_code=status.HTTP_202_ACCEPTED)
 @router.post("/detections/single", response_model=SingleDetectionResponse, status_code=status.HTTP_202_ACCEPTED)
-def submit_detection(request: SingleDetectionRequest, db: Session = Depends(get_db)):
+def submit_detection(
+    request: SingleDetectionRequest,
+    db: Session = Depends(get_db),
+    user: SysUser = Depends(current_user),
+    adapter: ModelAdapter = Depends(runtime_adapter),
+):
     try:
-        return DetectionService(db).submit_single(request)
+        return DetectionService(db, adapter).submit_single(request, created_by=user.id)
     except (ModelNotReady, RuntimeError) as exc:
         db.rollback()
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post("/detections/batch", response_model=DetectionSubmitResponse, status_code=status.HTTP_202_ACCEPTED)
-def submit_batch(request: BatchDetectionRequest, db: Session = Depends(get_db)):
+def submit_batch(
+    request: BatchDetectionRequest,
+    db: Session = Depends(get_db),
+    user: SysUser = Depends(current_user),
+    adapter: ModelAdapter = Depends(runtime_adapter),
+):
     try:
-        return DetectionService(db).submit_batch(request.items)
+        return DetectionService(db, adapter).submit_batch(request.items, created_by=user.id)
     except (ModelNotReady, RuntimeError) as exc:
         db.rollback()
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get("/detections/{task_id}", response_model=TaskStatusResponse)
-def get_detection_status(task_id: str, db: Session = Depends(get_db)):
+def get_detection_status(
+    task_id: str,
+    db: Session = Depends(get_db),
+    _: SysUser = Depends(current_user),
+):
     result = DetectionService(db).status(task_id)
     if result is None:
         raise HTTPException(status_code=404, detail="task not found")
@@ -92,7 +117,10 @@ def get_detection_status(task_id: str, db: Session = Depends(get_db)):
 
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse, tags=["tasks"])
 def task_status(task_id: str, db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
-    return get_detection_status(task_id, db)
+    result = DetectionService(db).status(task_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return result
 
 @router.get("/tasks/{task_id}/results", response_model=ResultPage, tags=["results"])
 def task_results(task_id: str, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
@@ -124,7 +152,6 @@ def _model_response(item):
 
 @router.get("/models/active", response_model=ModelResponse, tags=["models"])
 def active_model(db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
-    item = db.scalar(select(type(AdminService(db).models()[0])) if AdminService(db).models() else select(SysUser))
     from app.repositories.detection import DetectionRepository
     item = DetectionRepository(db).active_model()
     if item is None: raise HTTPException(404, "active model not found")
@@ -137,29 +164,32 @@ def model(version: str, db: Session = Depends(get_db), _: SysUser = Depends(curr
     return _model_response(item)
 
 @router.post("/models/{version}/activate", response_model=ModelResponse, tags=["models"])
-def activate_model(version: str, db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
+def activate_model(version: str, db: Session = Depends(get_db), _: SysUser = Depends(require_admin)):
     try: item = AdminService(db).activate(version)
     except ValueError as exc: raise HTTPException(409, str(exc)) from exc
     if item is None: raise HTTPException(404, "model not found")
     return _model_response(item)
 
 @router.post("/evaluations", response_model=EvaluationResponse, tags=["evaluations"])
-def evaluation(request: EvaluationRequest, db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
-    try: report = AdminService(db).evaluate(request)
+def evaluation(request: EvaluationRequest, db: Session = Depends(get_db), user: SysUser = Depends(require_admin), adapter: ModelAdapter = Depends(runtime_adapter)):
+    try: report = AdminService(db, adapter).evaluate(request, created_by=user.id)
     except ValueError as exc: raise HTTPException(400, str(exc)) from exc
-    return EvaluationResponse(report_id=report.id, dataset_name=report.dataset_name, dataset_split=report.dataset_split, sample_count=report.sample_count, accuracy=report.accuracy, precision=report.precision_score, recall=report.recall_score, f1=report.f1_score, auc=report.auc_score, confusion_matrix=report.confusion_matrix, status=report.report_status, created_at=report.created_at)
+    return _evaluation_response(report)
+
+def _evaluation_response(report):
+    return EvaluationResponse(report_id=report.id, dataset_name=report.dataset_name, dataset_split=report.dataset_split, sample_count=report.sample_count, accuracy=report.accuracy, precision=report.precision_score, recall=report.recall_score, f1=report.f1_score, auc=report.auc_score, pr_auc=report.pr_auc_score, roc_auc=report.roc_auc_score, confusion_matrix=report.confusion_matrix, status=report.report_status, created_at=report.created_at)
 
 @router.get("/evaluations", response_model=list[EvaluationResponse], tags=["evaluations"])
 def evaluations(db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
     rows = db.scalars(select(__import__("app.models", fromlist=["EvaluationReport"]).EvaluationReport).order_by(__import__("app.models", fromlist=["EvaluationReport"]).EvaluationReport.id.desc())).all()
-    return [EvaluationResponse(report_id=r.id, dataset_name=r.dataset_name, dataset_split=r.dataset_split, sample_count=r.sample_count, accuracy=r.accuracy, precision=r.precision_score, recall=r.recall_score, f1=r.f1_score, auc=r.auc_score, confusion_matrix=r.confusion_matrix, status=r.report_status, created_at=r.created_at) for r in rows]
+    return [_evaluation_response(r) for r in rows]
 
 @router.get("/evaluations/{report_id}", response_model=EvaluationResponse, tags=["evaluations"])
 def evaluation_detail(report_id: int, db: Session = Depends(get_db), _: SysUser = Depends(current_user)):
     from app.models import EvaluationReport
     r = db.get(EvaluationReport, report_id)
     if r is None: raise HTTPException(404, "evaluation not found")
-    return EvaluationResponse(report_id=r.id, dataset_name=r.dataset_name, dataset_split=r.dataset_split, sample_count=r.sample_count, accuracy=r.accuracy, precision=r.precision_score, recall=r.recall_score, f1=r.f1_score, auc=r.auc_score, confusion_matrix=r.confusion_matrix, status=r.report_status, created_at=r.created_at)
+    return _evaluation_response(r)
 
 @router.post("/reports", response_model=ReportResponse, tags=["reports"])
 def create_report(request: ReportRequest, db: Session = Depends(get_db), _: SysUser = Depends(current_user)):

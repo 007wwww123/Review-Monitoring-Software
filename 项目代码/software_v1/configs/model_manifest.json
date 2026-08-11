@@ -1,11 +1,17 @@
 {
   "manifest_version": "1",
   "status": "pending_deployment_values",
-  "model": {"version": "unregistered", "name": "semantic-temporal-gated-fusion"},
-  "checkpoint": {"relative_path": "checkpoints/model.pt", "sha256": null, "config_sha256": null},
+  "model": {
+    "version": "unregistered",
+    "name": "albert-gru-gated-fusion",
+    "config_relative_path": "configs/base.json",
+    "components": {"semantic": "ALBERT", "behavior": "GRU", "fusion": "vector_gate"}
+  },
+  "checkpoint": {"relative_path": "models/checkpoints/model.pt", "sha256": null, "config_sha256": null},
   "tokenizer": {"name": "albert/albert-base-v2", "source": "deployment-controlled"},
   "dataset": {"name": null, "splits": {}, "sha256": null},
-  "labels": {"semantic": ["real", "misleading", "exaggerated", "advertising"], "behavior": ["normal", "review_manipulation", "crowdturfing", "bot_like", "insufficient_evidence"], "learnable_behavior_types": ["review_manipulation", "crowdturfing", "bot_like"]},
+  "labels": {"authenticity": ["real", "fake"], "semantic": ["real", "misleading", "exaggerated", "advertising"], "behavior": ["normal", "review_manipulation", "crowdturfing", "bot_like", "insufficient_evidence"], "learnable_behavior_types": ["review_manipulation", "crowdturfing", "bot_like"]},
+  "decision": {"authenticity_threshold": 0.5, "allow_type_override": false},
   "metrics": {"source": "not_available_until_reproducible_evaluation", "snapshot": null},
   "runtime": {"python": null, "pytorch": null, "transformers": null, "numpy": null, "pandas": null, "cuda": null},
   "git_commit": null

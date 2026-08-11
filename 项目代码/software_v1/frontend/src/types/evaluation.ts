@@ -8,6 +8,8 @@ export interface EvaluationResponse {
   recall: number | null;
   f1: number | null;
   auc: number | null;
+  pr_auc?: number | null;
+  roc_auc?: number | null;
   confusion_matrix: Record<string, unknown> | null;
   status: 'success' | 'failed';
   created_at: string;

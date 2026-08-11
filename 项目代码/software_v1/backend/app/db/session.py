@@ -1,8 +1,14 @@
 import os
+from threading import Lock
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+
+_engine = None
+_session_factory = None
+_database_lock = Lock()
 
 
 def create_engine_from_url(database_url: str):
@@ -15,12 +21,30 @@ def get_session_factory(database_url: str):
 
 
 def get_db():
-    engine, factory = get_session_factory(database_url_from_env())
-    try:
-        with factory() as session:
-            yield session
-    finally:
-        engine.dispose()
+    factory = initialize_database()
+    with factory() as session:
+        yield session
+
+
+def initialize_database(database_url: str | None = None):
+    global _engine, _session_factory
+    if _session_factory is not None:
+        return _session_factory
+    with _database_lock:
+        if _session_factory is None:
+            _engine, _session_factory = get_session_factory(
+                database_url or database_url_from_env()
+            )
+    return _session_factory
+
+
+def dispose_database() -> None:
+    global _engine, _session_factory
+    with _database_lock:
+        if _engine is not None:
+            _engine.dispose()
+        _engine = None
+        _session_factory = None
 
 
 def database_url_from_env() -> str:

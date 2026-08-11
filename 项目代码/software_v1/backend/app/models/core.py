@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     BigInteger,
@@ -22,6 +22,10 @@ from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from app.db.base import Base
 
 
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def pk_column() -> Mapped[int]:
     # SQLite needs INTEGER for implicit autoincrement; MySQL still receives BIGINT.
     return mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
@@ -37,8 +41,8 @@ class SysUser(Base):
     role: Mapped[str] = mapped_column(Enum("admin", "reviewer", "operator", name="sys_user_role"), default="reviewer", nullable=False)
     status: Mapped[str] = mapped_column(Enum("active", "disabled", "locked", name="sys_user_status"), default="active", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
     tasks: Mapped[list["DetectionTask"]] = relationship(back_populates="creator")
 
@@ -52,6 +56,7 @@ class ReviewEvent(Base):
         Index("idx_review_source", "source_type", "created_at"),
         Index("idx_review_text_hash", "text_sha256"),
         Index("idx_review_manual_label", "manual_label", "created_at"),
+        Index("idx_review_user_time", "user_key", "review_time", "id"),
     )
 
     id: Mapped[int] = pk_column()
@@ -61,13 +66,14 @@ class ReviewEvent(Base):
     product_key: Mapped[str | None] = mapped_column(String(64), index=True)
     rating: Mapped[float | None] = mapped_column(Numeric(3, 1))
     review_date: Mapped[date | None] = mapped_column(Date)
+    review_time: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     review_text: Mapped[str] = mapped_column(Text().with_variant(MEDIUMTEXT, "mysql"), nullable=False)
     text_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     manual_label: Mapped[str] = mapped_column(Enum("real", "fake", "unknown", name="review_manual_label"), default="unknown", nullable=False)
     manual_label_by: Mapped[int | None] = mapped_column(ForeignKey("sys_user.id", ondelete="SET NULL"))
     manual_label_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class ModelVersion(Base):
@@ -83,7 +89,7 @@ class ModelVersion(Base):
     dataset_manifest_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     metrics_json: Mapped[dict | None] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     retired_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     tasks: Mapped[list["DetectionTask"]] = relationship(back_populates="model_version")
@@ -107,11 +113,35 @@ class DetectionTask(Base):
     error_message: Mapped[str | None] = mapped_column(String(1000))
     started_at: Mapped[datetime | None] = mapped_column(DateTime)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     creator: Mapped[SysUser | None] = relationship(back_populates="tasks")
     model_version: Mapped[ModelVersion | None] = relationship(back_populates="tasks")
     results: Mapped[list["DetectionResult"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    items: Mapped[list["DetectionTaskItem"]] = relationship(
+        back_populates="task", cascade="all, delete-orphan", order_by="DetectionTaskItem.item_index"
+    )
+
+
+class DetectionTaskItem(Base):
+    __tablename__ = "detection_task_item"
+    __table_args__ = (
+        UniqueConstraint("task_id", "item_index", name="uq_task_item_index"),
+    )
+
+    id: Mapped[int] = pk_column()
+    task_id: Mapped[int] = mapped_column(ForeignKey("detection_task.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    request_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(Enum("queued", "running", "succeeded", "failed", name="detection_task_item_status"), default="queued", nullable=False)
+    result_id: Mapped[int | None] = mapped_column(ForeignKey("detection_result.id", ondelete="SET NULL"))
+    error_message: Mapped[str | None] = mapped_column(String(1000))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    task: Mapped[DetectionTask] = relationship(back_populates="items")
+    result: Mapped["DetectionResult | None"] = relationship()
 
 
 class DetectionResult(Base):
@@ -136,7 +166,7 @@ class DetectionResult(Base):
     risk_source: Mapped[dict | None] = mapped_column(JSON)
     recommendation: Mapped[str | None] = mapped_column(String(255))
     explanation: Mapped[dict | None] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     task: Mapped[DetectionTask] = relationship(back_populates="results")
     review_event: Mapped[ReviewEvent] = relationship()
@@ -158,11 +188,13 @@ class EvaluationReport(Base):
     recall_score: Mapped[float | None] = mapped_column(Numeric(8, 7))
     f1_score: Mapped[float | None] = mapped_column(Numeric(8, 7))
     auc_score: Mapped[float | None] = mapped_column(Numeric(8, 7))
+    pr_auc_score: Mapped[float | None] = mapped_column(Numeric(8, 7))
+    roc_auc_score: Mapped[float | None] = mapped_column(Numeric(8, 7))
     confusion_matrix: Mapped[dict | None] = mapped_column(JSON)
     threshold_config: Mapped[dict | None] = mapped_column(JSON)
     report_status: Mapped[str] = mapped_column(Enum("success", "failed", name="evaluation_report_status"), nullable=False)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("sys_user.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
 class OperationLog(Base):
@@ -176,7 +208,7 @@ class OperationLog(Base):
     resource_id: Mapped[int | None] = mapped_column(BigInteger)
     operation_status: Mapped[str] = mapped_column(Enum("success", "failed", name="operation_status"), nullable=False)
     detail_json: Mapped[dict | None] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
 
 
 class ExplanationSnapshot(Base):
@@ -186,7 +218,7 @@ class ExplanationSnapshot(Base):
     result_id: Mapped[int] = mapped_column(ForeignKey("detection_result.id", ondelete="CASCADE"), unique=True, nullable=False)
     schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
 class ReportMetadata(Base):
@@ -197,4 +229,4 @@ class ReportMetadata(Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("detection_task.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(Enum("pending", "succeeded", "failed", name="report_status"), nullable=False, default="pending")
     summary: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

@@ -25,6 +25,8 @@ class CascadeConfig:
     semantic_exit_threshold: float = 0.85
     behavior_trigger_threshold: float = 0.65
     uncertainty_entropy_threshold: float = 0.55
+    authenticity_threshold: float = 0.5
+    allow_type_override: bool = False
     minimum_history: int = 1
     maximum_history: int = 30
     semantic_labels: list[str] = field(
@@ -77,7 +79,10 @@ class CascadeConfig:
             "semantic_exit_threshold",
             "behavior_trigger_threshold",
             "uncertainty_entropy_threshold",
+            "authenticity_threshold",
         ):
             value: Any = getattr(self, name)
             if not 0.0 <= value <= 1.0:
                 raise ValueError(f"{name} must be between 0 and 1")
+        if self.allow_type_override:
+            raise ValueError("allow_type_override must remain false for uncalibrated type heads")

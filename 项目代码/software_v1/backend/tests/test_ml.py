@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -40,6 +41,8 @@ class FakeModel:
         return SimpleNamespace(
             fusion=SimpleNamespace(
                 authenticity_logits=torch.tensor([[0.0, 2.0]]),
+                text_authenticity_probabilities=torch.tensor([[0.2, 0.8]]),
+                behavior_normality_probabilities=torch.tensor([[0.7, 0.3]]),
                 semantic_match_scores=torch.tensor([[0.8, 0.1, 0.05, 0.05]]),
                 gate_weights=torch.ones(1, 256) if available else torch.ones(1, 256),
             ),
@@ -61,18 +64,29 @@ def _loaded(model=None):
 
 
 def _request(history=()):
-    return SimpleNamespace(rating=4.0, text="review text", behavior_history=list(history))
+    return SimpleNamespace(
+        review_id="target", user_id="user", prod_id="product", rating=4.0,
+        date=datetime(2026, 8, 10, tzinfo=timezone.utc),
+        text="review text", behavior_history=list(history),
+    )
 
 
 def _history_item(index):
     return SimpleNamespace(
-        features=tuple(float(index + offset) for offset in range(10)),
+        review_id=f"history-{index}", prod_id=f"product-{index % 3}",
+        rating=float(index % 5 + 1),
+        date=datetime(2026, 8, 10, tzinfo=timezone.utc) - timedelta(hours=36-index),
+        text=f"history text {index}",
     )
 
 
 def test_loader_accepts_gru_state_and_rejects_lstm_state(tmp_path):
     gru_path = tmp_path / "gru.pt"
-    torch.save({"behavior.gru.weight_ih_l0": torch.ones(3, 10)}, gru_path)
+    torch.save({
+        "semantic.encoder.weight": torch.ones(1),
+        "behavior.gru.weight_ih_l0": torch.ones(3, 10),
+        "fusion.authenticity_head.weight": torch.ones(1),
+    }, gru_path)
     state = _load_state(gru_path, torch.device("cpu"))
     assert "behavior.gru.weight_ih_l0" in state
 

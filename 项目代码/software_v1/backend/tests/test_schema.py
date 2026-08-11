@@ -15,9 +15,17 @@ def session():
         yield db
 
 
-def test_only_seven_core_tables_are_declared():
+def test_expected_core_tables_are_declared():
     names = set(Base.metadata.tables)
-    assert names == {"sys_user", "review_event", "detection_task", "detection_result", "model_version", "evaluation_report", "operation_log", "explanation_snapshot", "report_metadata"}
+    assert names == {"sys_user", "review_event", "detection_task", "detection_task_item", "detection_result", "model_version", "evaluation_report", "operation_log", "explanation_snapshot", "report_metadata"}
+
+
+def test_review_history_query_has_composite_index():
+    index_columns = {
+        tuple(column.name for column in index.columns)
+        for index in ReviewEvent.__table__.indexes
+    }
+    assert ("user_key", "review_time", "id") in index_columns
 
 
 def test_review_and_result_can_be_traced_to_model(session):

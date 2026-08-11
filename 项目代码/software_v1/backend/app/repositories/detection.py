@@ -2,7 +2,7 @@ from datetime import date, datetime, time
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import DetectionResult, DetectionTask, ModelVersion, ReviewEvent
+from app.models import DetectionResult, DetectionTask, DetectionTaskItem, ModelVersion, ReviewEvent
 
 
 class DetectionRepository:
@@ -18,8 +18,39 @@ class DetectionRepository:
     def add_task(self, task: DetectionTask) -> DetectionTask:
         self.db.add(task); self.db.flush(); return task
 
+    def add_task_item(self, item: DetectionTaskItem) -> DetectionTaskItem:
+        self.db.add(item); self.db.flush(); return item
+
+    def next_queued_batch(self) -> DetectionTask | None:
+        return self.db.scalar(
+            select(DetectionTask)
+            .where(DetectionTask.task_type == "batch", DetectionTask.status == "queued")
+            .order_by(DetectionTask.id)
+            .with_for_update(skip_locked=True)
+        )
+
     def add_result(self, result: DetectionResult) -> DetectionResult:
         self.db.add(result); self.db.flush(); return result
+
+    def behavior_history(
+        self,
+        user_key: str,
+        before: datetime,
+        limit: int | None = None,
+    ) -> list[ReviewEvent]:
+        query = (
+            select(ReviewEvent)
+            .where(
+                ReviewEvent.user_key == user_key,
+                ReviewEvent.review_time.is_not(None),
+                ReviewEvent.review_time < before,
+            )
+            .order_by(ReviewEvent.review_time.desc(), ReviewEvent.id.desc())
+        )
+        if limit is not None:
+            query = query.limit(limit)
+        rows = self.db.scalars(query).all()
+        return list(reversed(rows))
 
     def task_by_no(self, task_no: str) -> DetectionTask | None:
         return self.db.scalar(select(DetectionTask).where(DetectionTask.task_no == task_no))

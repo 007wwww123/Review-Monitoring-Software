@@ -60,8 +60,17 @@ Probability = Annotated[float, Field(ge=0.0, le=1.0)]
 
 class BehaviorHistoryItem(StrictModel):
     review_id: str | None = Field(default=None, min_length=1, max_length=100)
+    prod_id: str = Field(min_length=1, max_length=128)
+    rating: float = Field(ge=0.0, le=5.0)
     date: datetime
-    features: tuple[float, float, float, float, float, float, float, float, float, float]
+    text: str = Field(default="", max_length=10000)
+
+    @field_validator("date")
+    @classmethod
+    def date_has_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("behavior history date must include a timezone")
+        return value
 
 
 class ProbabilityMap(StrictModel):

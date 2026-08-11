@@ -115,6 +115,68 @@ class BehaviorFeatureBuilder:
         self.maximum_history = maximum_history
 
     @staticmethod
+    def _normalized_event(record: Any, fallback_review_id: str) -> dict[str, Any]:
+        """Normalize API/database records to the same columns used in training."""
+        if hasattr(record, "model_dump"):
+            value = record.model_dump()
+        elif isinstance(record, dict):
+            value = dict(record)
+        else:
+            value = {
+                key: getattr(record, key)
+                for key in ("review_id", "user_id", "prod_id", "rating", "date", "text")
+                if hasattr(record, key)
+            }
+        value.setdefault("review_id", fallback_review_id)
+        value.setdefault("user_id", "inference-user")
+        missing = {"prod_id", "rating", "date", "text"}.difference(value)
+        if missing:
+            raise ValueError(f"behavior event is missing fields: {sorted(missing)}")
+        value["review_id"] = str(value["review_id"] or fallback_review_id)
+        value["user_id"] = str(value["user_id"] or "inference-user")
+        value["prod_id"] = str(value["prod_id"])
+        value["rating"] = float(value["rating"])
+        value["date"] = pd.Timestamp(value["date"])
+        value["text"] = str(value["text"] or "")
+        if not 0.0 <= value["rating"] <= 5.0:
+            raise ValueError("rating must be between 0 and 5")
+        return value
+
+    def build_inference_sequence(
+        self,
+        history: list[Any],
+        target: Any,
+    ) -> tuple[np.ndarray, int, float]:
+        """Build one online sequence using exactly the training feature formulas."""
+        target_event = self._normalized_event(target, "target")
+        history_events = [
+            self._normalized_event(record, f"history-{index}")
+            for index, record in enumerate(history)
+        ]
+        review_ids = [event["review_id"] for event in history_events]
+        if len(review_ids) != len(set(review_ids)):
+            raise ValueError("behavior history review_id values must be unique")
+        if any(event["date"] >= target_event["date"] for event in history_events):
+            raise ValueError("behavior history must contain only past events")
+
+        history_events.sort(key=lambda event: (event["date"], event["review_id"]))
+        ordered = history_events + [target_event]
+        event_vectors: list[np.ndarray] = []
+        for index, event in enumerate(ordered):
+            prior = pd.DataFrame(
+                ordered[:index],
+                columns=("review_id", "user_id", "prod_id", "rating", "date", "text"),
+            )
+            event_vectors.append(self._event_features(prior, pd.Series(event)))
+        bounded = event_vectors[-self.maximum_history :]
+        history_length = len(history_events)
+        return (
+            np.stack(bounded),
+            history_length,
+            float(history_length >= self.minimum_history),
+        )
+
+    @staticmethod
     def _event_features(history: pd.DataFrame, current: pd.Series) -> np.ndarray:
         prior_ratings = history["rating"].astype(float).to_numpy()
         current_rating = float(current["rating"])

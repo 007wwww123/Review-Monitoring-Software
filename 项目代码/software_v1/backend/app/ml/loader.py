@@ -10,6 +10,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from app.ml.manifest import ManifestError, load_manifest, sha256_file
+
 
 class ModelLoadError(RuntimeError):
     """Raised when a configured model cannot be loaded safely."""
@@ -23,6 +25,8 @@ class LoadedModel:
     device: Any
     checkpoint_path: Path
     checkpoint_sha256: str
+    model_version: str = "unregistered"
+    manifest: dict[str, Any] | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -68,8 +72,14 @@ def _load_state(path: Path, device: Any) -> dict[str, Any]:
         raise ModelLoadError("checkpoint state keys must be strings")
     if any(key.startswith("behavior.lstm.") for key in state):
         raise ModelLoadError("LSTM checkpoint is incompatible with the configured GRU model")
-    if not any(key.startswith("behavior.gru.") for key in state):
-        raise ModelLoadError("checkpoint does not contain GRU behavior parameters")
+    required_prefixes = {
+        "ALBERT semantic": "semantic.encoder.",
+        "GRU behavior": "behavior.gru.",
+        "gated fusion": "fusion.",
+    }
+    missing = [name for name, prefix in required_prefixes.items() if not any(key.startswith(prefix) for key in state)]
+    if missing:
+        raise ModelLoadError(f"checkpoint is not a complete ALBERT-GRU fusion model: {', '.join(missing)}")
     return state
 
 
@@ -81,6 +91,7 @@ class ModelLoader:
         *,
         config_path: str | os.PathLike[str],
         checkpoint_path: str | os.PathLike[str],
+        manifest_path: str | os.PathLike[str],
         base_model_path: str | os.PathLike[str] | None = None,
         tokenizer_path: str | os.PathLike[str] | None = None,
         model_root: str | os.PathLike[str] | None = None,
@@ -90,6 +101,7 @@ class ModelLoader:
     ) -> None:
         self.config_path = Path(config_path).resolve()
         self.checkpoint_path = Path(checkpoint_path).resolve()
+        self.manifest_path = Path(manifest_path).resolve()
         self.base_model_path = Path(base_model_path).resolve() if base_model_path else None
         self.tokenizer_path = Path(tokenizer_path).resolve() if tokenizer_path else None
         self.model_root = Path(model_root).resolve() if model_root else None
@@ -98,6 +110,8 @@ class ModelLoader:
         self.local_files_only = local_files_only
 
     def _validate_paths(self) -> None:
+        if not self.manifest_path.is_file():
+            raise ModelLoadError(f"model manifest does not exist: {self.manifest_path}")
         if not self.config_path.is_file():
             raise ModelLoadError(f"model config does not exist: {self.config_path}")
         if not self.checkpoint_path.is_file():
@@ -116,11 +130,32 @@ class ModelLoader:
 
     def load(self) -> LoadedModel:
         self._validate_paths()
+        try:
+            manifest = load_manifest(self.manifest_path)
+        except ManifestError as exc:
+            raise ModelLoadError(str(exc)) from exc
+        if manifest["status"] != "ready":
+            raise ModelLoadError("model manifest status must be ready before deployment")
+        deployment_root = self.manifest_path.parent.parent
+        manifest_checkpoint = (deployment_root / manifest["checkpoint"]["relative_path"]).resolve()
+        if manifest_checkpoint != self.checkpoint_path:
+            raise ModelLoadError("checkpoint path does not match model_manifest.json")
+        manifest_config = (deployment_root / manifest["model"]["config_relative_path"]).resolve()
+        if manifest_config != self.config_path:
+            raise ModelLoadError("config path does not match model_manifest.json")
+        expected_checkpoint_hash = manifest["checkpoint"].get("sha256")
+        expected_config_hash = manifest["checkpoint"].get("config_sha256")
+        if not expected_checkpoint_hash or sha256_file(self.checkpoint_path) != expected_checkpoint_hash:
+            raise ModelLoadError("checkpoint SHA-256 does not match model_manifest.json")
+        if not expected_config_hash or sha256_file(self.config_path) != expected_config_hash:
+            raise ModelLoadError("config SHA-256 does not match model_manifest.json")
         config_module, modeling_module = _model_core_imports()
         import torch
         from transformers import AutoTokenizer
 
         config = config_module.CascadeConfig.from_json(self.config_path)
+        config.authenticity_threshold = float(manifest["decision"]["authenticity_threshold"])
+        config.allow_type_override = False
         if self.base_model_path is not None:
             if not self.base_model_path.is_dir():
                 raise ModelLoadError(f"base model directory does not exist: {self.base_model_path}")
@@ -149,6 +184,8 @@ class ModelLoader:
             device=device,
             checkpoint_path=self.checkpoint_path,
             checkpoint_sha256=_sha256(self.checkpoint_path),
+            model_version=str(manifest["model"]["version"]),
+            manifest=manifest,
         )
 
 
@@ -156,12 +193,19 @@ def load_model_from_environment() -> LoadedModel:
     """Load only paths supplied by deployment configuration, never a request."""
     config = os.getenv("MODEL_CONFIG_PATH")
     checkpoint = os.getenv("MODEL_CHECKPOINT_PATH")
-    if not config or not checkpoint:
-        raise ModelLoadError("MODEL_CONFIG_PATH and MODEL_CHECKPOINT_PATH are required")
+    manifest = os.getenv("MODEL_MANIFEST_PATH")
+    base_model = os.getenv("MODEL_BASE_PATH")
+    if not config or not checkpoint or not manifest:
+        raise ModelLoadError("MODEL_CONFIG_PATH, MODEL_CHECKPOINT_PATH and MODEL_MANIFEST_PATH are required")
+    if not base_model:
+        raise ModelLoadError(
+            "MODEL_BASE_PATH is required for reproducible offline ALBERT loading"
+        )
     return ModelLoader(
         config_path=config,
         checkpoint_path=checkpoint,
-        base_model_path=os.getenv("MODEL_BASE_PATH"),
+        manifest_path=manifest,
+        base_model_path=base_model,
         tokenizer_path=os.getenv("MODEL_TOKENIZER_PATH"),
         model_root=os.getenv("MODEL_ROOT"),
         expected_sha256=os.getenv("MODEL_CHECKPOINT_SHA256"),

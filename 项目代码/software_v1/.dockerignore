@@ -1,0 +1,14 @@
+.git
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+frontend/node_modules
+frontend/dist
+runtime
+models/checkpoints
+*.pt
+*.pth
+*.bin
+*.tsv
+*.csv
+.env

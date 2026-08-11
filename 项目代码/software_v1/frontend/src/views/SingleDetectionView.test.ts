@@ -38,13 +38,13 @@ describe('SingleDetectionView', () => {
     expect(wrapper.text()).toContain('请输入评论文本');
   });
 
-  it('adds ten behavior features and rejects non-past history', async () => {
+  it('collects raw history and rejects non-past history', async () => {
     const wrapper = mount(SingleDetectionView);
     await fillValidForm(wrapper);
     await wrapper.get('[data-testid="add-history"]').trigger('click');
-    expect(wrapper.findAll('.feature-field input')).toHaveLength(10);
     const historyInputs = wrapper.findAll('.history-base input');
-    await historyInputs[1].setValue('2026-08-11T10:00');
+    await historyInputs[1].setValue('historical-product');
+    await historyInputs[3].setValue('2026-08-11T10:00');
     await wrapper.get('[data-testid="submit"]').trigger('submit');
     expect(wrapper.text()).toContain('历史时间必须早于目标评论');
   });
@@ -63,11 +63,11 @@ describe('SingleDetectionView', () => {
     expect(submit.attributes('disabled')).toBeUndefined();
   });
 
-  it('submits all ten behavior features and renders the history response', async () => {
-    let receivedFeatureCount = 0;
+  it('submits raw behavior history and renders the history response', async () => {
+    let receivedProductId = '';
     server.use(http.post('/api/v1/detections/single', async ({ request }) => {
-      const body = await request.json() as { behavior_history: Array<{ features: number[] }> };
-      receivedFeatureCount = body.behavior_history[0].features.length;
+      const body = await request.json() as { behavior_history: Array<{ prod_id: string }> };
+      receivedProductId = body.behavior_history[0].prod_id;
       return HttpResponse.json({
         task: { task_id: 'e26a484e-7347-4c74-b343-111111111111', status: 'succeeded', created_at: '2026-08-11T10:00:00Z' },
         result: { result_id: 3, authenticity: 'fake', confidence: 0.86, semantic_type: 'misleading', behavior_type: 'review_manipulation', risk_source: 'language_behavior_composite', action: 'review', model_version: 'mock-v1.0.0' },
@@ -77,10 +77,11 @@ describe('SingleDetectionView', () => {
     await fillValidForm(wrapper);
     await wrapper.get('[data-testid="add-history"]').trigger('click');
     const historyInputs = wrapper.findAll('.history-base input');
-    await historyInputs[1].setValue('2026-08-10T10:00');
+    await historyInputs[1].setValue('historical-product');
+    await historyInputs[3].setValue('2026-08-10T10:00');
     await wrapper.get('[data-testid="submit"]').trigger('submit');
     await settleRequest();
-    expect(receivedFeatureCount).toBe(10);
+    expect(receivedProductId).toBe('historical-product');
     expect(wrapper.text()).toContain('疑似虚假');
     expect(wrapper.text()).toContain('评论操纵');
   });

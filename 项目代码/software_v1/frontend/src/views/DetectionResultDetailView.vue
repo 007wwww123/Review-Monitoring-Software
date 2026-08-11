@@ -136,6 +136,8 @@ watch(() => route.params.resultId, loadResult);
           <section class="detail-section summary-section">
             <div class="section-heading"><div><h2>结果摘要</h2><p>最终融合输出与审核建议</p></div><span class="action-badge" :class="result.action">{{ actionLabels[result.action] }}</span></div>
             <dl class="summary-grid">
+              <div><dt>融合虚假概率</dt><dd>{{ percent(result.explanation?.final.fake_probability ?? (result.authenticity === 'fake' ? result.confidence : 1 - result.confidence)) }}</dd></div>
+              <div><dt>判断阈值</dt><dd>{{ result.explanation ? percent(result.explanation.final.threshold) : '未保存' }}</dd></div>
               <div><dt>风险来源</dt><dd>{{ riskLabels[result.risk_source] }}</dd></div>
               <div><dt>语义类型</dt><dd>{{ semanticLabels[result.semantic_type] }}</dd></div>
               <div><dt>行为类型</dt><dd :class="{ warning: result.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[result.behavior_type] }}</dd></div>
@@ -146,6 +148,10 @@ watch(() => route.params.resultId, loadResult);
           <template v-if="result.explanation">
             <section class="detail-section evidence-section">
               <div class="section-heading"><div><h2>语义相对匹配度</h2><p>固定四标签顺序，分数未经独立校准时不代表确定类别</p></div><span class="selected-type">{{ semanticLabels[result.explanation.semantic.selected_type] }}</span></div>
+              <dl class="evidence-meta">
+                <div><dt>ALBERT真实辅助概率</dt><dd>{{ percent(result.explanation.semantic.authenticity_scores.real) }}</dd></div>
+                <div><dt>ALBERT虚假辅助概率</dt><dd>{{ percent(result.explanation.semantic.authenticity_scores.fake) }}</dd></div>
+              </dl>
               <div class="score-list semantic-scores">
                 <div v-for="label in semanticOrder" :key="label" class="score-row">
                   <span>{{ semanticLabels[label] }}</span><div><i :style="{ width: percent(result.explanation.semantic.scores[label]) }"></i></div><strong>{{ percent(result.explanation.semantic.scores[label]) }}</strong>
@@ -162,6 +168,8 @@ watch(() => route.params.resultId, loadResult);
                 </div>
               </div>
               <dl class="evidence-meta">
+                <div><dt>GRU正常辅助概率</dt><dd>{{ percent(result.explanation.behavior.normality_scores.normal) }}</dd></div>
+                <div><dt>GRU异常辅助概率</dt><dd>{{ percent(result.explanation.behavior.normality_scores.abnormal) }}</dd></div>
                 <div><dt>证据可用性</dt><dd>{{ result.explanation.behavior.available ? '可用' : '不可用' }}</dd></div>
                 <div><dt>历史长度</dt><dd>{{ result.explanation.behavior.history_length }}</dd></div>
                 <div><dt>任务性质</dt><dd>{{ result.explanation.behavior.is_proxy_task ? '真实性代理任务' : '独立监督任务' }}</dd></div>
@@ -182,7 +190,7 @@ watch(() => route.params.resultId, loadResult);
 
             <section class="detail-section disclaimer-section">
               <div class="section-heading"><div><h2>解释边界</h2><p>审核和报告必须保留以下说明</p></div><ShieldAlert :size="19" /></div>
-              <ol><li v-for="(item, index) in result.explanation.disclaimers" :key="index"><span>{{ index + 1 }}</span><p>{{ item }}</p></li></ol>
+              <ol><li v-for="(item, index) in result.explanation.limitations" :key="index"><span>{{ index + 1 }}</span><p>{{ item }}</p></li></ol>
             </section>
           </template>
 

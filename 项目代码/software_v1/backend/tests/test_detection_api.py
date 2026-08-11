@@ -25,10 +25,13 @@ class FakeAdapter:
         return PredictionResult(
             authenticity="real",
             authenticity_scores={"real": 0.9, "fake": 0.1},
+            threshold=0.5,
             confidence=0.8,
+            semantic_authenticity_scores={"real": 0.8, "fake": 0.2},
             semantic_scores={"real": 0.8, "misleading": 0.1, "exaggerated": 0.05, "advertising": 0.05},
             semantic_type="real",
             behavior_scores={"normal": 0.0, "review_manipulation": 0.0, "crowdturfing": 0.0, "bot_like": 0.0, "insufficient_evidence": 1.0},
+            behavior_normality_scores={"normal": 0.5, "abnormal": 0.5},
             behavior_type="insufficient_evidence",
             behavior_available=False,
             history_length=0,
@@ -65,14 +68,14 @@ def client(monkeypatch):
     db.add(SysUser(username="reviewer", password_hash=hash_password("test-password"), role="reviewer", status="active"))
     db.add(SysUser(username="admin", password_hash=hash_password("admin-password"), role="admin", status="active"))
     db.commit()
-    service = DetectionService(db, FakeAdapter())
-    monkeypatch.setattr(routes, "DetectionService", lambda current_db: service)
 
     def override_db():
         yield db
 
     app.dependency_overrides[get_db] = override_db
     with TestClient(app) as test_client:
+        app.state.model_adapter = FakeAdapter()
+        app.state.model_error = None
         yield test_client
     app.dependency_overrides.clear()
     db.close()
@@ -103,40 +106,44 @@ def admin_headers(client):
 
 
 def test_single_detection_route_returns_result_and_task(client):
-    response = client.post("/api/v1/detections", json=payload("r1"))
+    headers = auth_headers(client)
+    response = client.post("/api/v1/detections", json=payload("r1"), headers=headers)
     assert response.status_code == 202
     body = response.json()
     assert body["task"]["status"] == "succeeded"
     assert body["result"]["behavior_type"] == "insufficient_evidence"
 
-    status = client.get(f"/api/v1/detections/{body['task']['task_id']}")
+    status = client.get(f"/api/v1/detections/{body['task']['task_id']}", headers=headers)
     assert status.status_code == 200
     assert status.json()["completed_count"] == 1
 
 
 def test_batch_detection_route_returns_one_task(client):
+    headers = auth_headers(client)
     response = client.post(
         "/api/v1/detections/batch",
         json={"items": [payload("r1"), payload("r2", "Second review")]},
+        headers=headers,
     )
     assert response.status_code == 202
     body = response.json()
-    assert body["status"] == "succeeded"
-    status = client.get(f"/api/v1/detections/{body['task_id']}")
+    assert body["status"] == "pending"
+    status = client.get(f"/api/v1/detections/{body['task_id']}", headers=headers)
     assert status.json()["total_count"] == 2
-    assert status.json()["completed_count"] == 2
+    assert status.json()["completed_count"] == 0
 
 
 def test_authenticated_result_detail_returns_typed_explanation(client):
-    submitted = client.post("/api/v1/detections/single", json=payload("detail-1")).json()
+    headers = auth_headers(client)
+    submitted = client.post("/api/v1/detections/single", json=payload("detail-1"), headers=headers).json()
     result_id = submitted["result"]["result_id"]
-    response = client.get(f"/api/v1/results/{result_id}", headers=auth_headers(client))
+    response = client.get(f"/api/v1/results/{result_id}", headers=headers)
     assert response.status_code == 200
     body = response.json()
     assert body["result_id"] == result_id
     assert body["task_id"] == submitted["task"]["task_id"]
     assert body["explanation"]["behavior"]["selected_type"] == "insufficient_evidence"
-    assert len(body["explanation"]["disclaimers"]) == 4
+    assert len(body["explanation"]["limitations"]) == 4
 
 
 def test_result_detail_requires_authentication_and_returns_404(client):
@@ -147,8 +154,8 @@ def test_result_detail_requires_authentication_and_returns_404(client):
 
 
 def test_task_report_creation_and_downloads(client):
-    submitted = client.post("/api/v1/detections/single", json=payload("report-1")).json()
     headers = auth_headers(client)
+    submitted = client.post("/api/v1/detections/single", json=payload("report-1"), headers=headers).json()
     created = client.post("/api/v1/reports", json={"task_id": submitted["task"]["task_id"]}, headers=headers)
     assert created.status_code == 200
     report_id = created.json()["report_id"]
@@ -160,6 +167,23 @@ def test_task_report_creation_and_downloads(client):
     assert csv_download.status_code == 200
     assert csv_download.headers["content-type"].startswith("text/csv")
     assert "metric,value" in csv_download.text
+
+
+def test_detection_submission_requires_authentication(client):
+    assert client.post("/api/v1/detections", json=payload("private-1")).status_code == 401
+
+
+def test_model_switching_requires_admin_and_is_disabled_in_v1(client):
+    version = "v1.0.0"
+    reviewer = client.post(
+        f"/api/v1/models/{version}/activate", headers=auth_headers(client)
+    )
+    assert reviewer.status_code == 403
+    admin = client.post(
+        f"/api/v1/models/{version}/activate", headers=admin_headers(client)
+    )
+    assert admin.status_code == 409
+    assert "disabled" in admin.json()["detail"]
 
 
 def test_login_updates_last_login_and_current_user(client):

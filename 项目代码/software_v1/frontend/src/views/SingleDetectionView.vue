@@ -22,7 +22,7 @@ import type {
   SingleDetectionRequest,
 } from '../types';
 
-type EditableHistory = { review_id: string; date: string; features: number[] };
+type EditableHistory = { review_id: string; prod_id: string; rating: number; date: string; text: string };
 type FormState = { review_id: string; user_id: string; prod_id: string; rating: number; date: string; text: string; history: EditableHistory[] };
 
 const initialForm = (): FormState => ({ review_id: '', user_id: '', prod_id: '', rating: 5, date: '', text: '', history: [] });
@@ -38,13 +38,12 @@ const behaviorLabels: Record<BehaviorType, string> = { normal: '行为正常', r
 const riskLabels: Record<RiskSource, string> = { real: '未发现风险', language_fake: '语义风险', behavior_fake: '行为风险', language_behavior_composite: '语义与行为复合风险', uncertain: '风险不确定' };
 const actionLabels: Record<Action, string> = { keep: '保留', review: '人工复核', block: '拦截' };
 const authenticityLabels: Record<Authenticity, string> = { real: '真实', fake: '疑似虚假' };
-const featureLabels = ['评分偏差', '时间间隔', '文本长度', '重复度', '评分变化', '活跃频率', '商品集中度', '极端评分比', '时间密度', '历史数量'];
 
 const resultTone = computed(() => result.value?.authenticity === 'fake' ? 'danger' : 'success');
 
 function addHistory() {
   if (form.history.length >= 30) return;
-  form.history.push({ review_id: '', date: '', features: Array(10).fill(0) });
+  form.history.push({ review_id: '', prod_id: '', rating: 5, date: '', text: '' });
 }
 
 function removeHistory(index: number) {
@@ -75,7 +74,8 @@ function validate(): boolean {
     if (!item.date) errors[`history-${index}`] = `第 ${index + 1} 条历史缺少时间`;
     else if (Number.isFinite(targetTime) && new Date(item.date).getTime() >= targetTime) errors[`history-${index}`] = `第 ${index + 1} 条历史时间必须早于目标评论`;
     else if (item.review_id.length > 100) errors[`history-${index}`] = `第 ${index + 1} 条历史评论 ID 过长`;
-    else if (item.features.length !== 10 || item.features.some((value) => !Number.isFinite(value))) errors[`history-${index}`] = `第 ${index + 1} 条历史必须包含 10 个有效数值`;
+    else if (!item.prod_id.trim()) errors[`history-${index}`] = `第 ${index + 1} 条历史缺少商品 ID`;
+    else if (!Number.isFinite(item.rating) || item.rating < 0 || item.rating > 5) errors[`history-${index}`] = `第 ${index + 1} 条历史评分范围为 0 到 5`;
   });
   validationErrors.value = errors;
   return Object.keys(errors).length === 0;
@@ -84,8 +84,10 @@ function validate(): boolean {
 function toPayload(): SingleDetectionRequest {
   const history = form.history.map((item): BehaviorHistoryItem => ({
     ...(item.review_id.trim() ? { review_id: item.review_id.trim() } : {}),
+    prod_id: item.prod_id.trim(),
+    rating: item.rating,
     date: new Date(item.date).toISOString(),
-    features: item.features as BehaviorHistoryItem['features'],
+    text: item.text.trim(),
   }));
   return {
     ...(form.review_id.trim() ? { review_id: form.review_id.trim() } : {}),
@@ -124,7 +126,7 @@ async function submit() {
         <h1>单条评论检测</h1>
         <p>提交评论与可选历史行为，获取语义和行为融合后的审核建议。</p>
       </div>
-      <span class="api-state"><span></span>Mock API 已连接</span>
+      <span class="api-state"><span></span>API 已连接</span>
     </div>
 
     <div class="detection-layout">
@@ -167,20 +169,17 @@ async function submit() {
             </div>
             <div class="history-base">
               <label class="field"><span>历史评论 ID <small>选填</small></span><input v-model="item.review_id" maxlength="101" placeholder="历史评论标识" /></label>
+              <label class="field"><span>历史商品 ID *</span><input v-model="item.prod_id" maxlength="128" placeholder="商品或服务标识" /></label>
+              <label class="field"><span>历史评分 *</span><input v-model.number="item.rating" type="number" min="0" max="5" step="0.5" /></label>
               <label class="field"><span>历史时间 *</span><input v-model="item.date" type="datetime-local" /></label>
             </div>
-            <div class="feature-grid">
-              <label v-for="(feature, featureIndex) in featureLabels" :key="feature" class="feature-field">
-                <span>{{ featureIndex + 1 }}. {{ feature }}</span>
-                <input v-model.number="item.features[featureIndex]" type="number" step="any" />
-              </label>
-            </div>
+            <label class="field"><span>历史评论文本</span><textarea v-model="item.text" maxlength="10000" rows="2" placeholder="可选，用于计算历史文本长度特征"></textarea></label>
             <p v-if="validationErrors[`history-${index}`]" class="row-error">{{ validationErrors[`history-${index}`] }}</p>
           </div>
         </div>
 
         <div class="form-actions">
-          <p><ShieldAlert :size="16" />用户标识仅用于本次模拟检测，不会发送至真实模型服务。</p>
+          <p><ShieldAlert :size="16" />用户标识将在服务端哈希后用于查询目标时间之前的历史行为。</p>
           <button class="primary-button" data-testid="submit" type="submit" :disabled="submitting">
             <span v-if="submitting" class="spinner"></span><ArrowRight v-else :size="18" />{{ submitting ? '检测中…' : '开始检测' }}
           </button>

@@ -1,0 +1,13 @@
+ARG PYTORCH_BASE_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+FROM ${PYTORCH_BASE_IMAGE}
+
+WORKDIR /app
+COPY backend /app/backend
+COPY model_core /app/model_core
+COPY configs /app/configs
+COPY scripts /app/scripts
+RUN python -m pip install --no-cache-dir -e /app/model_core -e /app/backend
+
+ENV PYTHONPATH=/app/backend:/app/model_core
+WORKDIR /app/backend
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

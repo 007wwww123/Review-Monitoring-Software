@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha256
 from uuid import UUID, uuid4
 
 from app.ml.adapter import ModelAdapter, PredictionResult
-from app.models import DetectionResult, DetectionTask, ModelVersion, ReviewEvent
+from app.models import DetectionResult, DetectionTask, DetectionTaskItem, ExplanationSnapshot, ModelVersion, OperationLog, ReviewEvent
 from app.repositories.detection import DetectionRepository
 from app.schemas.detection import (
     DetectionResultSummary,
@@ -14,6 +14,7 @@ from app.schemas.detection import (
     SingleDetectionResponse,
     TaskStatusResponse,
 )
+from app.schemas.common import BehaviorHistoryItem
 
 
 SEMANTIC_LABELS = ("real", "misleading", "exaggerated", "advertising")
@@ -42,6 +43,14 @@ class DetectionService:
         )
 
     @staticmethod
+    def _database_time(value: datetime) -> datetime:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
+    def _utcnow() -> datetime:
+        return datetime.now(timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
     def _review(request: SingleDetectionRequest) -> ReviewEvent:
         return ReviewEvent(
             source_type="online",
@@ -50,6 +59,7 @@ class DetectionService:
             product_key=request.prod_id,
             rating=request.rating,
             review_date=request.date.date(),
+            review_time=DetectionService._database_time(request.date),
             review_text=request.text,
             text_sha256=sha256(request.text.encode("utf-8")).hexdigest(),
         )
@@ -73,18 +83,22 @@ class DetectionService:
     @staticmethod
     def _explanation(prediction: PredictionResult) -> dict:
         return {
-            "schema_version": "explanation.v1",
+            "schema_version": "explanation.v2",
             "final": {
                 "authenticity": prediction.authenticity,
                 "confidence": prediction.confidence,
+                "fake_probability": prediction.authenticity_scores["fake"],
+                "threshold": prediction.threshold,
                 "risk_source": prediction.risk_source,
                 "action": prediction.action,
             },
             "semantic": {
+                "authenticity_scores": prediction.semantic_authenticity_scores,
                 "scores": prediction.semantic_scores,
                 "selected_type": prediction.semantic_type,
             },
             "behavior": {
+                "normality_scores": prediction.behavior_normality_scores,
                 "scores": prediction.behavior_scores,
                 "selected_type": prediction.behavior_type,
                 "available": prediction.behavior_available,
@@ -101,8 +115,38 @@ class DetectionService:
                 "behavior_evidence_state": "available" if prediction.behavior_available else "insufficient",
                 "calibration_state": "uncalibrated",
             },
-            "disclaimers": prediction.disclaimers,
+            "limitations": prediction.limitations,
         }
+
+    def _with_server_history(
+        self,
+        request: SingleDetectionRequest,
+    ) -> SingleDetectionRequest:
+        user_key = sha256(request.user_id.encode("utf-8")).hexdigest()
+        # Training cumulative statistics use the full prior history. The shared
+        # builder truncates only the final GRU sequence to maximum_history.
+        stored = self.repo.behavior_history(user_key, self._database_time(request.date))
+        combined: list[BehaviorHistoryItem] = [
+            BehaviorHistoryItem(
+                review_id=row.external_review_id or f"stored-{row.id}",
+                prod_id=row.product_key or "unknown-product",
+                rating=float(row.rating or 0.0),
+                date=row.review_time.replace(tzinfo=timezone.utc),
+                text=row.review_text,
+            )
+            for row in stored
+            if row.review_time is not None
+        ]
+        combined.extend(request.behavior_history)
+        unique: dict[tuple[str, ...], BehaviorHistoryItem] = {}
+        for item in combined:
+            key = (("id", item.review_id) if item.review_id else (
+                "event", item.date.isoformat(), item.prod_id, str(item.rating), item.text
+            ))
+            unique[key] = item
+        ordered = sorted(unique.values(), key=lambda item: (item.date, item.review_id or ""))
+        ordered = [item for item in ordered if item.date < request.date]
+        return request.model_copy(update={"behavior_history": ordered})
 
     def _result(
         self,
@@ -130,6 +174,40 @@ class DetectionService:
             explanation=self._explanation(prediction),
         )
 
+    def _process_item(
+        self,
+        task: DetectionTask,
+        model: ModelVersion,
+        request: SingleDetectionRequest,
+    ) -> tuple[DetectionResult, PredictionResult]:
+        inference_request = self._with_server_history(request)
+        prediction = self.adapter.predict(inference_request)
+        review = self.repo.add_review(self._review(request))
+        result = self.repo.add_result(self._result(task, model, review, request, prediction))
+        self.db.add(ExplanationSnapshot(
+            result_id=result.id,
+            schema_version="explanation.v2",
+            payload=result.explanation,
+        ))
+        return result, prediction
+
+    def _operation_log(
+        self,
+        operation_type: str,
+        user_id: int | None,
+        task: DetectionTask,
+        status: str,
+        detail: dict | None = None,
+    ) -> None:
+        self.db.add(OperationLog(
+            user_id=user_id,
+            operation_type=operation_type,
+            resource_type="detection_task",
+            resource_id=task.id,
+            operation_status=status,
+            detail_json=detail,
+        ))
+
     @staticmethod
     def _summary(result: DetectionResult, model: ModelVersion, request: SingleDetectionRequest, prediction: PredictionResult) -> DetectionResultSummary:
         return DetectionResultSummary(
@@ -144,26 +222,30 @@ class DetectionService:
             model_version=model.version,
         )
 
-    def submit_single(self, request: SingleDetectionRequest) -> SingleDetectionResponse:
+    def submit_single(
+        self,
+        request: SingleDetectionRequest,
+        created_by: int | None = None,
+    ) -> SingleDetectionResponse:
         model = self.repo.active_model()
         if model is None:
             raise RuntimeError("no active model version is configured")
         task = DetectionTask(
             task_no=str(uuid4()),
             task_type="single",
+            created_by=created_by,
             model_version=model,
             total_count=1,
             status="running",
-            started_at=datetime.utcnow(),
+            started_at=self._utcnow(),
         )
         try:
             self.repo.add_task(task)
-            prediction = self.adapter.predict(request)
-            review = self.repo.add_review(self._review(request))
-            result = self.repo.add_result(self._result(task, model, review, request, prediction))
+            result, prediction = self._process_item(task, model, request)
             task.success_count = 1
             task.status = "success"
-            task.finished_at = datetime.utcnow()
+            task.finished_at = self._utcnow()
+            self._operation_log("single_detection", created_by, task, "success")
             self.db.commit()
             return SingleDetectionResponse(
                 task=self._task_response(task),
@@ -173,7 +255,11 @@ class DetectionService:
             self.db.rollback()
             raise
 
-    def submit_batch(self, requests: list[SingleDetectionRequest]) -> DetectionSubmitResponse:
+    def submit_batch(
+        self,
+        requests: list[SingleDetectionRequest],
+        created_by: int | None = None,
+    ) -> DetectionSubmitResponse:
         if not requests:
             raise ValueError("batch cannot be empty")
         model = self.repo.active_model()
@@ -182,26 +268,20 @@ class DetectionService:
         task = DetectionTask(
             task_no=str(uuid4()),
             task_type="batch",
+            created_by=created_by,
             model_version=model,
             total_count=len(requests),
-            status="running",
-            started_at=datetime.utcnow(),
+            status="queued",
         )
         self.repo.add_task(task)
-        failures: list[str] = []
         for index, request in enumerate(requests):
-            try:
-                with self.db.begin_nested():
-                    prediction = self.adapter.predict(request)
-                    review = self.repo.add_review(self._review(request))
-                    self.repo.add_result(self._result(task, model, review, request, prediction))
-                    task.success_count += 1
-            except Exception as exc:
-                failures.append(f"item {index}: {exc}")
-                task.failed_count += 1
-        task.status = "success" if not failures else ("partial" if task.success_count else "failed")
-        task.error_message = "; ".join(failures)[:1000] if failures else None
-        task.finished_at = datetime.utcnow()
+            self.repo.add_task_item(DetectionTaskItem(
+                task=task,
+                item_index=index,
+                request_json=request.model_dump(mode="json"),
+                status="queued",
+            ))
+        self._operation_log("batch_detection", created_by, task, "success", {"queued_count": len(requests)})
         self.db.commit()
         return self._task_response(task)
 

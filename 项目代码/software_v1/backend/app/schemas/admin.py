@@ -21,6 +21,7 @@ class EvaluationRequest(StrictModel):
 class EvaluationResponse(StrictModel):
     report_id: int; dataset_name: str; dataset_split: str; sample_count: int
     accuracy: float | None; precision: float | None; recall: float | None; f1: float | None; auc: float | None
+    pr_auc: float | None = None; roc_auc: float | None = None
     confusion_matrix: dict | None; status: str; created_at: datetime
 
 class ResultResponse(StrictModel):

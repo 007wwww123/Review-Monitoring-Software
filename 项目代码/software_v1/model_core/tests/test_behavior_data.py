@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 import pandas as pd
 
 from spam_cascade.data import BehaviorFeatureBuilder
@@ -68,6 +69,24 @@ class BehaviorFeatureBuilderTest(unittest.TestCase):
         samples = BehaviorFeatureBuilder(1, 30).build(frame)
         self.assertEqual([sample.binary_label for sample in samples], [1, 1])
         self.assertEqual([sample.type_label for sample in samples], [-100, -100])
+
+    def test_online_and_training_builders_produce_identical_target_sequence(self) -> None:
+        builder = BehaviorFeatureBuilder(1, 30)
+        training_sample = builder.build(self.frame)[-1]
+        history = self.frame.iloc[:2].to_dict("records")
+        target = self.frame.iloc[2].to_dict()
+        online_sequence, history_length, available = builder.build_inference_sequence(
+            history, target
+        )
+        np.testing.assert_allclose(online_sequence, training_sample.sequence)
+        self.assertEqual(history_length, 2)
+        self.assertEqual(available, 1.0)
+
+    def test_online_builder_rejects_future_history(self) -> None:
+        builder = BehaviorFeatureBuilder(1, 30)
+        target = self.frame.iloc[1].to_dict()
+        with self.assertRaisesRegex(ValueError, "past events"):
+            builder.build_inference_sequence([self.frame.iloc[2].to_dict()], target)
 
 
 if __name__ == "__main__":

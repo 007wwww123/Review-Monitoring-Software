@@ -12,22 +12,28 @@ BEHAVIOR_KEYS = ("normal", "review_manipulation", "crowdturfing", "bot_like", "i
 class FinalExplanation(StrictModel):
     authenticity: Authenticity
     confidence: Probability
+    fake_probability: Probability
+    threshold: Probability
     risk_source: RiskSource
     action: Action
 
 
 class SemanticExplanation(StrictModel):
+    authenticity_scores: dict[str, Probability]
     scores: dict[str, Probability]
     selected_type: SemanticType
 
     @model_validator(mode="after")
     def validate_keys(self):
+        if tuple(self.authenticity_scores) != ("real", "fake"):
+            raise ValueError("semantic authenticity scores must use real/fake order")
         if tuple(self.scores) != SEMANTIC_KEYS:
             raise ValueError("semantic scores must use the fixed four-label order")
         return self
 
 
 class BehaviorExplanation(StrictModel):
+    normality_scores: dict[str, Probability]
     scores: dict[str, Probability]
     selected_type: BehaviorType
     available: bool
@@ -36,6 +42,8 @@ class BehaviorExplanation(StrictModel):
 
     @model_validator(mode="after")
     def validate_keys(self):
+        if tuple(self.normality_scores) != ("normal", "abnormal"):
+            raise ValueError("behavior normality scores must use normal/abnormal order")
         if tuple(self.scores) != BEHAVIOR_KEYS:
             raise ValueError("behavior scores must use the fixed five-label order")
         if not self.available and self.selected_type != BehaviorType.insufficient_evidence:
@@ -56,16 +64,16 @@ class EvidenceExplanation(StrictModel):
 
 
 class Explanation(StrictModel):
-    schema_version: str = Field(pattern=r"^explanation\.v1$")
+    schema_version: str = Field(pattern=r"^explanation\.v2$")
     final: FinalExplanation
     semantic: SemanticExplanation
     behavior: BehaviorExplanation
     fusion: FusionExplanation
     evidence: EvidenceExplanation
-    disclaimers: tuple[str, str, str, str]
+    limitations: tuple[str, str, str, str]
 
     @model_validator(mode="after")
-    def validate_disclaimers(self):
-        if len(self.disclaimers) != 4:
-            raise ValueError("all four required disclaimers must be present")
+    def validate_limitations(self):
+        if len(self.limitations) != 4:
+            raise ValueError("all four required limitations must be present")
         return self

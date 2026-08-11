@@ -80,10 +80,14 @@ class DecisionRouter:
         if len(fusion_auth) != 2 or len(fusion_semantic) != len(self.config.semantic_labels):
             raise ValueError("fusion probability dimensions do not match configuration")
 
-        authenticity = "fake" if fusion_auth[1] >= fusion_auth[0] else "real"
+        authenticity = (
+            "fake"
+            if fusion_auth[1] >= self.config.authenticity_threshold
+            else "real"
+        )
         semantic_index = max(range(len(fusion_semantic)), key=fusion_semantic.__getitem__)
         semantic_label = self.config.semantic_labels[semantic_index]
-        fusion_confidence = min(max(fusion_auth), max(fusion_semantic))
+        fusion_confidence = fusion_auth[1] if authenticity == "fake" else fusion_auth[0]
         if behavior_label is None or behavior_confidence is None:
             if not route.behavior_available:
                 behavior_label = "insufficient_evidence"
@@ -91,29 +95,26 @@ class DecisionRouter:
             else:
                 raise ValueError("behavior output is required for run_fusion route")
 
+        if not route.behavior_available:
+            behavior_label = "insufficient_evidence"
+            behavior_confidence = 1.0
+
         behavior_abnormal = behavior_label not in {"normal", "insufficient_evidence"}
         semantic_abnormal = authenticity == "fake" and semantic_label != "real"
-        if behavior_abnormal and semantic_abnormal:
-            return FinalDecision(
-                "fake",
-                semantic_label,
-                behavior_label,
-                "language_behavior_composite",
-                min(max(fusion_confidence, behavior_confidence), 1.0),
-                "block",
-            )
-        if behavior_abnormal:
-            return FinalDecision(
-                "fake", "none", behavior_label, "behavior_fake", behavior_confidence, "review"
-            )
-        if semantic_abnormal:
-            return FinalDecision(
-                "fake", semantic_label, behavior_label, "language_fake", fusion_confidence, "review"
-            )
         if authenticity == "fake":
+            if behavior_abnormal and semantic_abnormal:
+                risk_source = "language_behavior_composite"
+            elif semantic_abnormal:
+                risk_source = "language_fake"
+            elif behavior_abnormal:
+                risk_source = "behavior_fake"
+            else:
+                risk_source = "uncertain"
+            # Type matches describe supporting evidence only. They cannot turn a
+            # real fusion result into fake or independently trigger blocking.
             return FinalDecision(
-                "fake", "uncertain", behavior_label, "uncertain", fusion_confidence, "review"
+                "fake", semantic_label, behavior_label, risk_source, fusion_confidence, "review"
             )
         return FinalDecision(
-            "real", "real", behavior_label, "real", fusion_confidence, "keep"
+            "real", semantic_label, behavior_label, "real", fusion_confidence, "keep"
         )

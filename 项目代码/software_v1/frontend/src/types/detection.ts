@@ -1,7 +1,7 @@
 import type { Action, Authenticity, BehaviorType, RiskSource, SemanticType, TaskStatus } from './enums';
 import type { Explanation } from './explanation';
 
-export interface BehaviorHistoryItem { review_id?: string; date: string; features: [number, number, number, number, number, number, number, number, number, number] }
+export interface BehaviorHistoryItem { review_id?: string; prod_id: string; rating: number; date: string; text: string }
 export interface SingleDetectionRequest { review_id?: string; user_id: string; prod_id: string; rating: number; date: string; text: string; behavior_history?: BehaviorHistoryItem[] }
 export interface BatchDetectionRequest { items: SingleDetectionRequest[] }
 export interface DetectionSubmitResponse { task_id: string; status: TaskStatus; created_at: string }

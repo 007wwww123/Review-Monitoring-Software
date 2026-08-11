@@ -50,12 +50,12 @@ const mockReports = new Map<number, ReportSummaryResponse>();
 let reportSequence = 7001;
 const initialMockModels: ModelVersionResponse[] = [
   {
-    version: 'mock-v1.0.0', model_name: 'semantic-temporal-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
+    version: 'mock-v1.0.0', model_name: 'albert-gru-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
     config: { max_length: 256, behavior_input_size: 10, behavior_hidden_size: 128, fusion_hidden_size: 256, minimum_history: 1, maximum_history: 30, semantic_labels: ['real', 'misleading', 'exaggerated', 'advertising'], behavior_labels: ['normal', 'review_manipulation', 'crowdturfing', 'bot_like', 'insufficient_evidence'] },
     metrics: null, checkpoint_sha256: 'mock-checkpoint-not-for-production', is_active: true, created_at: '2026-08-01T09:00:00+08:00',
   },
   {
-    version: 'mock-v0.9.0', model_name: 'semantic-temporal-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
+    version: 'mock-v0.9.0', model_name: 'albert-gru-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
     config: { max_length: 256, behavior_input_size: 10, behavior_hidden_size: 128, fusion_hidden_size: 256, minimum_history: 1, maximum_history: 30 },
     metrics: null, checkpoint_sha256: 'mock-archived-checkpoint', is_active: false, created_at: '2026-07-15T09:00:00+08:00',
   },
@@ -71,15 +71,17 @@ function explanationFor(item: DetectionRecordItem): Explanation | null {
   if (item.result_id === 3005) return null;
   const behaviorAvailable = item.behavior_type !== 'insufficient_evidence';
   return {
-    schema_version: 'explanation.v1',
-    final: { authenticity: item.authenticity, confidence: item.confidence, risk_source: item.risk_source, action: item.action },
+    schema_version: 'explanation.v2',
+    final: { authenticity: item.authenticity, confidence: item.confidence, fake_probability: item.authenticity === 'fake' ? item.confidence : 1 - item.confidence, threshold: 0.5, risk_source: item.risk_source, action: item.action },
     semantic: {
+      authenticity_scores: item.authenticity === 'fake' ? { real: 0.14, fake: 0.86 } : { real: 0.91, fake: 0.09 },
       scores: item.semantic_type === 'real'
         ? { real: 0.82, misleading: 0.08, exaggerated: 0.06, advertising: 0.04 }
         : { real: 0.09, misleading: 0.63, exaggerated: 0.17, advertising: 0.11 },
       selected_type: item.semantic_type,
     },
     behavior: {
+      normality_scores: behaviorAvailable ? { normal: 0.18, abnormal: 0.82 } : { normal: 0.5, abnormal: 0.5 },
       scores: behaviorAvailable
         ? { normal: 0.08, review_manipulation: 0.61, crowdturfing: 0.14, bot_like: 0.17, insufficient_evidence: 0 }
         : { normal: 0, review_manipulation: 0, crowdturfing: 0, bot_like: 0, insufficient_evidence: 1 },
@@ -98,7 +100,7 @@ function explanationFor(item: DetectionRecordItem): Explanation | null {
       behavior_evidence_state: behaviorAvailable ? 'available' : 'insufficient',
       calibration_state: 'uncalibrated',
     },
-    disclaimers: [
+    limitations: [
       '门控权重仅为融合权重摘要，不构成因果归因。',
       '细分类分数是未校准的相对匹配度，不代表确定类别。',
       '行为二分类使用评论真假标签作为代理任务，并非独立人工标注真值。',
@@ -117,8 +119,7 @@ export const handlers = [
     const version = String(params.version);
     const target = mockModels.find((item) => item.version === version);
     if (!target) return HttpResponse.json({ detail: 'model not found' }, { status: 404 });
-    mockModels = mockModels.map((item) => ({ ...item, is_active: item.version === version }));
-    return HttpResponse.json(mockModels.find((item) => item.version === version));
+    return HttpResponse.json({ detail: 'online model switching is disabled' }, { status: 409 });
   }),
   http.post('/api/v1/auth/login', async ({ request }) => {
     const payload = await request.json() as { username: string; password: string };

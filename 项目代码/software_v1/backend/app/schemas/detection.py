@@ -15,10 +15,17 @@ class SingleDetectionRequest(StrictModel):
     review_id: str | None = Field(default=None, min_length=1, max_length=100)
     user_id: str = Field(min_length=1, max_length=128)
     prod_id: str = Field(min_length=1, max_length=128)
-    rating: float
+    rating: float = Field(ge=0.0, le=5.0)
     date: datetime
     text: str = Field(min_length=1, max_length=10000)
     behavior_history: list[BehaviorHistoryItem] = Field(default_factory=list, max_length=30)
+
+    @field_validator("date")
+    @classmethod
+    def date_has_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("date must include a timezone")
+        return value
 
     @field_validator("behavior_history")
     @classmethod

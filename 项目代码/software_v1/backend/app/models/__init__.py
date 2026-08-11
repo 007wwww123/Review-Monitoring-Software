@@ -1,6 +1,7 @@
 from .core import (
     DetectionResult,
     DetectionTask,
+    DetectionTaskItem,
     EvaluationReport,
     ModelVersion,
     OperationLog,
@@ -14,6 +15,7 @@ __all__ = [
     "SysUser",
     "ReviewEvent",
     "DetectionTask",
+    "DetectionTaskItem",
     "DetectionResult",
     "ModelVersion",
     "EvaluationReport",

@@ -16,6 +16,8 @@
   "semantic_exit_threshold": 0.85,
   "behavior_trigger_threshold": 0.65,
   "uncertainty_entropy_threshold": 0.55,
+  "authenticity_threshold": 0.5,
+  "allow_type_override": false,
   "minimum_history": 1,
   "maximum_history": 30,
   "semantic_labels": ["real", "misleading", "exaggerated", "advertising"],

@@ -50,6 +50,18 @@ class DecisionRouterTest(unittest.TestCase):
         self.assertEqual(decision.authenticity, "real")
         self.assertEqual(decision.behavior_type, "insufficient_evidence")
 
+    def test_behavior_type_cannot_override_real_fusion_result(self) -> None:
+        route = self.router.route([0.1, 0.9], [0.05, 0.1, 0.15, 0.7], 5)
+        decision = self.router.finalize(
+            route,
+            behavior_label="bot_like",
+            behavior_confidence=0.99,
+            fusion_authenticity_probabilities=[0.8, 0.2],
+            fusion_semantic_probabilities=[0.05, 0.1, 0.15, 0.7],
+        )
+        self.assertEqual(decision.authenticity, "real")
+        self.assertEqual(decision.action, "keep")
+
 
 if __name__ == "__main__":
     unittest.main()
