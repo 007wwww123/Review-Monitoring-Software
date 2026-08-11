@@ -3,6 +3,8 @@ import type {
   DetectionSubmitResponse,
   DetectionRecordListResponse,
   DetectionRecordQuery,
+  DetectionResultResponse,
+  ReportSummaryResponse,
   SingleDetectionRequest,
   SingleDetectionResponse,
   TaskStatusResponse,
@@ -71,6 +73,21 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function requestBlob(url: string): Promise<Blob> {
+  let response: Response;
+  try {
+    const headers = new Headers();
+    const token = getToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    response = await fetch(`${apiBase}${url}`, { headers });
+  } catch {
+    throw new ApiError('无法连接检测服务，请检查服务是否已启动。', 0);
+  }
+  if (response.status === 401) { clearSession(); window.dispatchEvent(new Event('auth:expired')); }
+  if (!response.ok) throw new ApiError(await parseError(response), response.status);
+  return response.blob();
+}
+
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const session = await requestJson<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(payload) });
   saveSession(session); return session;
@@ -96,4 +113,16 @@ export function getDetectionRecords(query: DetectionRecordQuery): Promise<Detect
   if (query.date_from) params.set('date_from', query.date_from);
   if (query.date_to) params.set('date_to', query.date_to);
   return requestJson(`/api/v1/results?${params.toString()}`);
+}
+
+export function getDetectionResult(resultId: number): Promise<DetectionResultResponse> {
+  return requestJson(`/api/v1/results/${resultId}`);
+}
+
+export function createTaskReport(taskId: string): Promise<ReportSummaryResponse> {
+  return requestJson('/api/v1/reports', { method: 'POST', body: JSON.stringify({ task_id: taskId }) });
+}
+
+export function downloadTaskReport(reportId: number, format: 'json' | 'csv'): Promise<Blob> {
+  return requestBlob(`/api/v1/reports/${reportId}/download?format=${format}`);
 }

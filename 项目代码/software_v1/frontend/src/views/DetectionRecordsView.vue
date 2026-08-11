@@ -110,7 +110,7 @@ onMounted(loadRecords);
               <td class="type-stack"><span>{{ semanticLabels[item.semantic_type] }}</span><small :class="{ warning: item.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[item.behavior_type] }}</small></td>
               <td><span class="action-badge" :class="item.action">{{ actionLabels[item.action] }}</span></td>
               <td class="mono model-cell">{{ item.model_version }}</td>
-              <td><button type="button" class="icon-button record-view" disabled title="结果详情页待开发" aria-label="查看详情（待开发）"><Eye :size="17" /></button></td>
+              <td><RouterLink class="icon-button record-view" :to="`/results/${item.result_id}`" title="查看结果与证据" :aria-label="`查看结果 ${item.result_id} 详情`"><Eye :size="17" /></RouterLink></td>
             </tr>
           </tbody>
         </table>

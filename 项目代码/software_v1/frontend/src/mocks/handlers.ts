@@ -4,6 +4,9 @@ import type {
   DetectionSubmitResponse,
   DetectionRecordItem,
   DetectionRecordListResponse,
+  DetectionResultResponse,
+  Explanation,
+  ReportSummaryResponse,
   SingleDetectionRequest,
   SingleDetectionResponse,
   TaskStatusResponse,
@@ -41,12 +44,61 @@ const mockRecords: DetectionRecordItem[] = Array.from({ length: 26 }, (_, index)
     created_at: `2026-08-${String(day).padStart(2, '0')}T${String(9 + (index % 8)).padStart(2, '0')}:20:00+08:00`,
   };
 });
+const mockReports = new Map<number, ReportSummaryResponse>();
+let reportSequence = 7001;
+
+function explanationFor(item: DetectionRecordItem): Explanation | null {
+  if (item.result_id === 3005) return null;
+  const behaviorAvailable = item.behavior_type !== 'insufficient_evidence';
+  return {
+    schema_version: 'explanation.v1',
+    final: { authenticity: item.authenticity, confidence: item.confidence, risk_source: item.risk_source, action: item.action },
+    semantic: {
+      scores: item.semantic_type === 'real'
+        ? { real: 0.82, misleading: 0.08, exaggerated: 0.06, advertising: 0.04 }
+        : { real: 0.09, misleading: 0.63, exaggerated: 0.17, advertising: 0.11 },
+      selected_type: item.semantic_type,
+    },
+    behavior: {
+      scores: behaviorAvailable
+        ? { normal: 0.08, review_manipulation: 0.61, crowdturfing: 0.14, bot_like: 0.17, insufficient_evidence: 0 }
+        : { normal: 0, review_manipulation: 0, crowdturfing: 0, bot_like: 0, insufficient_evidence: 1 },
+      selected_type: item.behavior_type,
+      available: behaviorAvailable,
+      history_length: behaviorAvailable ? 12 : 0,
+      is_proxy_task: true,
+    },
+    fusion: {
+      semantic_weight: behaviorAvailable ? 0.58 : 1,
+      behavior_weight: behaviorAvailable ? 0.42 : 0,
+      weight_summary: behaviorAvailable ? '语义与行为证据共同参与融合' : '行为证据不足，当前由语义分支主导',
+    },
+    evidence: {
+      semantic_evidence_state: 'available',
+      behavior_evidence_state: behaviorAvailable ? 'available' : 'insufficient',
+      calibration_state: 'uncalibrated',
+    },
+    disclaimers: [
+      '门控权重仅为融合权重摘要，不构成因果归因。',
+      '细分类分数是未校准的相对匹配度，不代表确定类别。',
+      '行为二分类使用评论真假标签作为代理任务，并非独立人工标注真值。',
+      '检测结果仅作为辅助审核建议，不替代人工事实认定。',
+    ],
+  };
+}
 
 export const handlers = [
   http.post('/api/v1/auth/login', async ({ request }) => {
     const payload = await request.json() as { username: string; password: string };
     if (!payload.username || payload.password !== 'demo') return HttpResponse.json({ detail: '用户名或密码错误' }, { status: 401 });
     return HttpResponse.json({ user_id: 1, username: payload.username, role: 'reviewer', access_token: 'mock-access-token', token_type: 'bearer', expires_at: new Date(Date.now() + 1800000).toISOString() });
+  }),
+  http.get('/api/v1/results/:resultId', ({ params }) => {
+    const resultId = Number(params.resultId);
+    const item = mockRecords.find((record) => record.result_id === resultId);
+    if (!item) return HttpResponse.json({ detail: 'result not found' }, { status: 404 });
+    const response: DetectionResultResponse = { ...item, review_id: item.review_id ?? null, explanation: explanationFor(item) };
+    return HttpResponse.json(response);
   }),
   http.get('/api/v1/results', ({ request }) => {
     const url = new URL(request.url);
@@ -74,6 +126,30 @@ export const handlers = [
       page_size: pageSize,
     };
     return HttpResponse.json(response);
+  }),
+  http.post('/api/v1/reports', async ({ request }) => {
+    const payload = await request.json() as { task_id: string };
+    const records = mockRecords.filter((item) => item.task_id === payload.task_id);
+    if (!records.length) return HttpResponse.json({ detail: 'task not found' }, { status: 404 });
+    const report: ReportSummaryResponse = {
+      report_id: reportSequence++,
+      task_id: payload.task_id,
+      status: 'succeeded',
+      summary: { total_count: records.length, success_count: records.length, failed_count: 0 },
+      created_at: new Date().toISOString(),
+    };
+    mockReports.set(report.report_id, report);
+    return HttpResponse.json(report);
+  }),
+  http.get('/api/v1/reports/:reportId/download', ({ params, request }) => {
+    const report = mockReports.get(Number(params.reportId));
+    if (!report) return HttpResponse.json({ detail: 'report not found' }, { status: 404 });
+    const format = new URL(request.url).searchParams.get('format') ?? 'json';
+    if (format === 'csv') {
+      const rows = Object.entries(report.summary).map(([key, value]) => `${key},${value}`).join('\n');
+      return new HttpResponse(`metric,value\n${rows}\n`, { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': `attachment; filename=report-${report.report_id}.csv` } });
+    }
+    return HttpResponse.json(report.summary, { headers: { 'Content-Disposition': `attachment; filename=report-${report.report_id}.json` } });
   }),
   http.post('/api/v1/detections/batch', async ({ request }) => {
     const payload = await request.json() as BatchDetectionRequest;

@@ -17,4 +17,20 @@ export interface DetectionResultSummary {
   model_version: string;
 }
 export interface SingleDetectionResponse { task: DetectionSubmitResponse; result: DetectionResultSummary }
-export interface DetectionResultResponse { result_id: number; review_id?: string; user_key?: string; product_id?: string; text_excerpt?: string; authenticity: Authenticity; confidence: number; semantic_type: SemanticType; behavior_type: BehaviorType; risk_source: RiskSource; action: Action; model_version: string; explanation: Explanation; created_at: string }
+export interface DetectionResultResponse {
+  result_id: number;
+  task_id: string;
+  review_id: string | null;
+  user_key: string | null;
+  product_id: string | null;
+  text_excerpt: string;
+  authenticity: Authenticity;
+  confidence: number;
+  semantic_type: SemanticType;
+  behavior_type: BehaviorType;
+  risk_source: RiskSource;
+  action: Action;
+  model_version: string;
+  explanation: Explanation | null;
+  created_at: string;
+}

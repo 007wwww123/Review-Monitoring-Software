@@ -22,6 +22,14 @@ describe('DetectionRecordsView', () => {
     expect(wrapper.text()).toContain('显示 11–20');
   });
 
+  it('links each record to its result detail', async () => {
+    const wrapper = mount(DetectionRecordsView, {
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    });
+    await settle();
+    expect(wrapper.get('a[href="/results/3001"]').attributes('href')).toBe('/results/3001');
+  });
+
   it('filters by authenticity and action', async () => {
     const wrapper = mount(DetectionRecordsView);
     await settle();

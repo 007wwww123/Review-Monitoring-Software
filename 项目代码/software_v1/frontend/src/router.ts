@@ -3,6 +3,7 @@ import SingleDetectionView from './views/SingleDetectionView.vue';
 import BatchDetectionView from './views/BatchDetectionView.vue';
 import DetectionRecordsView from './views/DetectionRecordsView.vue';
 import LoginView from './views/LoginView.vue';
+import DetectionResultDetailView from './views/DetectionResultDetailView.vue';
 import { isAuthenticated } from './auth';
 
 export const router = createRouter({
@@ -13,6 +14,7 @@ export const router = createRouter({
     { path: '/detections/single', component: SingleDetectionView },
     { path: '/detections/batch', component: BatchDetectionView },
     { path: '/results', component: DetectionRecordsView },
+    { path: '/results/:resultId(\\d+)', component: DetectionResultDetailView },
   ],
 });
 

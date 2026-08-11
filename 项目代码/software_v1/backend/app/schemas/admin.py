@@ -1,6 +1,8 @@
 from datetime import datetime
 from pydantic import Field
 from .common import StrictModel
+from .common import Action, Authenticity, BehaviorType, Probability, RiskSource, SemanticType
+from .explanation import Explanation
 
 class ErrorResponse(StrictModel):
     code: str
@@ -22,11 +24,11 @@ class EvaluationResponse(StrictModel):
     confusion_matrix: dict | None; status: str; created_at: datetime
 
 class ResultResponse(StrictModel):
-    result_id: int; task_id: str; review_id: str | None; authenticity: str; confidence: float
-    semantic_type: str; behavior_type: str; risk_source: str; action: str; model_version: str
+    result_id: int; task_id: str; review_id: str | None; authenticity: Authenticity; confidence: Probability
+    semantic_type: SemanticType; behavior_type: BehaviorType; risk_source: RiskSource; action: Action; model_version: str
     user_key: str | None; product_id: str | None; text_excerpt: str
     data_source: str; is_mock: bool; is_proxy_task: bool
-    explanation: dict | None; created_at: datetime
+    explanation: Explanation | None; created_at: datetime
 
 class ResultPage(StrictModel):
     items: list[ResultResponse]; page: int; page_size: int; total: int

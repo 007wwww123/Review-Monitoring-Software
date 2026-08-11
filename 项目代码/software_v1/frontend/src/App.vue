@@ -22,11 +22,17 @@ const navigation = [
   { label: '系统概览', icon: Activity },
   { label: '单条评论检测', icon: FileSearch, to: '/detections/single' },
   { label: '批量检测任务', icon: Layers3, to: '/detections/batch' },
-  { label: '检测记录', icon: FileClock, to: '/results' },
-  { label: '结果与证据', icon: ClipboardCheck },
+  { label: '检测记录', icon: FileClock, to: '/results', active: 'records' },
+  { label: '结果与证据', icon: ClipboardCheck, to: '/results', active: 'detail' },
   { label: '模型评估', icon: BarChart3 },
   { label: '模型与配置', icon: Settings2 },
 ];
+
+function isNavigationActive(item: { to?: string; active?: string }) {
+  if (item.active === 'records') return route.path === '/results';
+  if (item.active === 'detail') return route.path.startsWith('/results/');
+  return item.to === route.path;
+}
 </script>
 
 <template>
@@ -47,7 +53,7 @@ const navigation = [
           :key="item.label"
           :to="item.to"
           class="nav-item"
-          :class="{ active: item.to === route.path, disabled: !item.to }"
+          :class="{ active: isNavigationActive(item), disabled: !item.to }"
           :aria-disabled="!item.to"
         >
           <component :is="item.icon" :size="18" />
