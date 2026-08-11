@@ -70,7 +70,8 @@ def task_results(task_id: str, page: int = Query(1, ge=1), page_size: int = Quer
     return ResultPage(items=[_result_response(row) for row in rows], page=page, page_size=page_size, total=total)
 
 def _result_response(row: DetectionResult) -> ResultResponse:
-    return ResultResponse(result_id=row.id, task_id=row.task.task_no, review_id=None, authenticity=row.authenticity_label, confidence=float(row.authenticity_probability), semantic_type=row.semantic_label, behavior_type=row.behavior_label, risk_source=(row.risk_source or {}).get("value", "uncertain"), action=row.recommendation or "review", model_version=row.model_version.version, explanation=row.explanation, created_at=row.created_at)
+    review = row.review_event
+    return ResultResponse(result_id=row.id, task_id=row.task.task_no, review_id=review.external_review_id, user_key=review.user_key, product_id=review.product_key, text_excerpt=review.review_text[:240], authenticity=row.authenticity_label, confidence=float(row.authenticity_probability), semantic_type=row.semantic_label, behavior_type=row.behavior_label, risk_source=(row.risk_source or {}).get("value", "uncertain"), action=row.recommendation or "review", model_version=row.model_version.version, explanation=row.explanation, created_at=row.created_at)
 
 @router.get("/results", response_model=ResultPage, tags=["results"])
 def results(task_id: str | None = None, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db), _: SysUser = Depends(current_user)):

@@ -9,9 +9,14 @@ import {
   Settings2,
   ShieldCheck,
 } from 'lucide-vue-next';
-import { useRoute } from 'vue-router';
+import { onBeforeUnmount, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
+const router = useRouter();
+function onAuthExpired() { void router.replace({ path: '/login', query: { redirect: route.fullPath } }); }
+onMounted(() => window.addEventListener('auth:expired', onAuthExpired));
+onBeforeUnmount(() => window.removeEventListener('auth:expired', onAuthExpired));
 
 const navigation = [
   { label: '系统概览', icon: Activity },

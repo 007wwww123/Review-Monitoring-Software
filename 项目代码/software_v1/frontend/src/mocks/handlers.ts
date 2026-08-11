@@ -40,6 +40,11 @@ const mockRecords: DetectionRecordItem[] = Array.from({ length: 26 }, (_, index)
 });
 
 export const handlers = [
+  http.post('/api/v1/auth/login', async ({ request }) => {
+    const payload = await request.json() as { username: string; password: string };
+    if (!payload.username || payload.password !== 'demo') return HttpResponse.json({ detail: '用户名或密码错误' }, { status: 401 });
+    return HttpResponse.json({ user_id: 1, username: payload.username, role: 'reviewer', access_token: 'mock-access-token', token_type: 'bearer', expires_at: new Date(Date.now() + 1800000).toISOString() });
+  }),
   http.get('/api/v1/results', ({ request }) => {
     const url = new URL(request.url);
     const page = Math.max(1, Number(url.searchParams.get('page') ?? 1));

@@ -139,6 +139,7 @@ class DetectionResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     task: Mapped[DetectionTask] = relationship(back_populates="results")
+    review_event: Mapped[ReviewEvent] = relationship()
     model_version: Mapped[ModelVersion] = relationship(back_populates="results")
 
 

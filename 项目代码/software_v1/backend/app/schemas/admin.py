@@ -24,6 +24,7 @@ class EvaluationResponse(StrictModel):
 class ResultResponse(StrictModel):
     result_id: int; task_id: str; review_id: str | None; authenticity: str; confidence: float
     semantic_type: str; behavior_type: str; risk_source: str; action: str; model_version: str
+    user_key: str | None; product_id: str | None; text_excerpt: str
     explanation: dict | None; created_at: datetime
 
 class ResultPage(StrictModel):

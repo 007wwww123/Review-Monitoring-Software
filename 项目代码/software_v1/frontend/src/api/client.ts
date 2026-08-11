@@ -7,6 +7,8 @@ import type {
   SingleDetectionResponse,
   TaskStatusResponse,
 } from '../types';
+import type { LoginRequest, LoginResponse } from '../types/auth';
+import { clearSession, getToken, saveSession } from '../auth';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -31,7 +33,14 @@ async function parseError(response: Response): Promise<string> {
   return `请求失败（${response.status}）`;
 }
 
+/* Authenticated request wrapper is shared by all API calls. */
 export async function submitSingleDetection(payload: SingleDetectionRequest): Promise<SingleDetectionResponse> {
+  return requestJson('/api/v1/detections/single', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+/*
   let response: Response;
   try {
     response = await fetch(`${apiBase}/api/v1/detections/single`, {
@@ -43,18 +52,28 @@ export async function submitSingleDetection(payload: SingleDetectionRequest): Pr
     throw new ApiError('无法连接检测服务，请检查服务是否已启动。', 0);
   }
   if (!response.ok) throw new ApiError(await parseError(response), response.status);
-  return response.json() as Promise<SingleDetectionResponse>;
+  return response.json() as Promise<SingleDetectionResponse>;*/
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${apiBase}${url}`, init);
+    const headers = new Headers(init?.headers);
+    if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json');
+    const token = getToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    response = await fetch(`${apiBase}${url}`, { ...init, headers });
   } catch {
     throw new ApiError('无法连接检测服务，请检查服务是否已启动。', 0);
   }
+  if (response.status === 401) { clearSession(); window.dispatchEvent(new Event('auth:expired')); }
   if (!response.ok) throw new ApiError(await parseError(response), response.status);
   return response.json() as Promise<T>;
+}
+
+export async function login(payload: LoginRequest): Promise<LoginResponse> {
+  const session = await requestJson<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+  saveSession(session); return session;
 }
 
 export function submitBatchDetection(payload: BatchDetectionRequest): Promise<DetectionSubmitResponse> {
