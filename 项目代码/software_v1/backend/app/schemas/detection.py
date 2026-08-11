@@ -47,6 +47,23 @@ class DetectionSubmitResponse(StrictModel):
     created_at: datetime
 
 
+class DetectionResultSummary(StrictModel):
+    result_id: int
+    review_id: str | None
+    authenticity: Authenticity
+    confidence: Probability
+    semantic_type: SemanticType
+    behavior_type: BehaviorType
+    risk_source: RiskSource
+    action: Action
+    model_version: str
+
+
+class SingleDetectionResponse(StrictModel):
+    task: DetectionSubmitResponse
+    result: DetectionResultSummary
+
+
 class DetectionResultResponse(StrictModel):
     result_id: UUID
     review_id: str | None
