@@ -1,0 +1,71 @@
+<script setup lang="ts">
+import {
+  Activity,
+  BarChart3,
+  ClipboardCheck,
+  FileClock,
+  FileSearch,
+  Layers3,
+  Settings2,
+  ShieldCheck,
+} from 'lucide-vue-next';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
+const navigation = [
+  { label: '系统概览', icon: Activity },
+  { label: '单条评论检测', icon: FileSearch, to: '/detections/single' },
+  { label: '批量检测任务', icon: Layers3, to: '/detections/batch' },
+  { label: '检测记录', icon: FileClock, to: '/results' },
+  { label: '结果与证据', icon: ClipboardCheck },
+  { label: '模型评估', icon: BarChart3 },
+  { label: '模型与配置', icon: Settings2 },
+];
+</script>
+
+<template>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"><ShieldCheck :size="22" /></span>
+        <span class="brand-copy">
+          <strong>评论风控台</strong>
+          <small>V1.0.0 开发版</small>
+        </span>
+      </div>
+
+      <nav class="navigation" aria-label="主导航">
+        <component
+          :is="item.to ? 'RouterLink' : 'span'"
+          v-for="item in navigation"
+          :key="item.label"
+          :to="item.to"
+          class="nav-item"
+          :class="{ active: item.to === route.path, disabled: !item.to }"
+          :aria-disabled="!item.to"
+        >
+          <component :is="item.icon" :size="18" />
+          <span>{{ item.label }}</span>
+          <small v-if="!item.to">待开发</small>
+        </component>
+      </nav>
+
+      <div class="sidebar-foot">
+        <span class="service-dot"></span>
+        <div><strong>模拟服务在线</strong><small>MSW 开发环境</small></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div>
+          <strong>虚假评论智能检测系统</strong>
+          <span>语义与时序行为融合审核</span>
+        </div>
+        <span class="environment-badge">开发环境</span>
+      </header>
+      <RouterView />
+    </main>
+  </div>
+</template>

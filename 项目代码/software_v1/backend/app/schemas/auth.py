@@ -8,7 +8,7 @@ class LoginRequest(StrictModel):
     password: str = Field(min_length=1, max_length=256)
 
 class LoginResponse(StrictModel):
-    user_id: UUID
+    user_id: int
     username: str
     role: str
     access_token: str
