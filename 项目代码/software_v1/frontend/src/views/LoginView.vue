@@ -14,7 +14,7 @@ async function submit() {
 </script>
 <template>
   <main class="page-content login-page"><form class="form-panel login-panel" @submit.prevent="submit">
-    <h1>系统登录</h1><p>请输入审核账号继续。</p>
+    <h1>系统登录</h1><p>请输入审核账号继续。</p><small class="login-register-note">账号由系统管理员创建，不开放公共注册。</small>
     <label class="field"><span>用户名</span><input v-model="username" autocomplete="username" required /></label>
     <label class="field"><span>密码</span><input v-model="password" type="password" autocomplete="current-password" required /></label>
     <p v-if="error" class="alert error" role="alert">{{ error }}</p>

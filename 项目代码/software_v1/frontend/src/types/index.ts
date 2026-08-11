@@ -5,3 +5,5 @@ export * from './task';
 export * from './auth';
 export * from './report';
 export * from './record';
+export * from './model';
+export * from './evaluation';

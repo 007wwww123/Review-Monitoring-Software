@@ -7,6 +7,8 @@ import type {
   DetectionResultResponse,
   Explanation,
   ReportSummaryResponse,
+  ModelVersionResponse,
+  EvaluationResponse,
   SingleDetectionRequest,
   SingleDetectionResponse,
   TaskStatusResponse,
@@ -46,6 +48,24 @@ const mockRecords: DetectionRecordItem[] = Array.from({ length: 26 }, (_, index)
 });
 const mockReports = new Map<number, ReportSummaryResponse>();
 let reportSequence = 7001;
+const initialMockModels: ModelVersionResponse[] = [
+  {
+    version: 'mock-v1.0.0', model_name: 'semantic-temporal-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
+    config: { max_length: 256, behavior_input_size: 10, behavior_hidden_size: 128, fusion_hidden_size: 256, minimum_history: 1, maximum_history: 30, semantic_labels: ['real', 'misleading', 'exaggerated', 'advertising'], behavior_labels: ['normal', 'review_manipulation', 'crowdturfing', 'bot_like', 'insufficient_evidence'] },
+    metrics: null, checkpoint_sha256: 'mock-checkpoint-not-for-production', is_active: true, created_at: '2026-08-01T09:00:00+08:00',
+  },
+  {
+    version: 'mock-v0.9.0', model_name: 'semantic-temporal-gated-fusion', tokenizer_name: 'albert/albert-base-v2',
+    config: { max_length: 256, behavior_input_size: 10, behavior_hidden_size: 128, fusion_hidden_size: 256, minimum_history: 1, maximum_history: 30 },
+    metrics: null, checkpoint_sha256: 'mock-archived-checkpoint', is_active: false, created_at: '2026-07-15T09:00:00+08:00',
+  },
+];
+let mockModels: ModelVersionResponse[] = initialMockModels.map((item) => ({ ...item }));
+let mockRole = 'admin';
+const mockEvaluations: EvaluationResponse[] = [
+  { report_id: 8101, dataset_name: 'mock-sealed-test', dataset_split: 'test', sample_count: 1200, accuracy: 0.884, precision: 0.872, recall: 0.861, f1: 0.866, auc: 0.921, confusion_matrix: { labels: ['real', 'fake'], matrix: [[548, 52], [87, 513]] }, status: 'success', created_at: '2026-07-28T15:30:00+08:00' },
+  { report_id: 8100, dataset_name: 'mock-production-review', dataset_split: 'production_review', sample_count: 240, accuracy: null, precision: null, recall: null, f1: null, auc: null, confusion_matrix: null, status: 'failed', created_at: '2026-07-20T10:00:00+08:00' },
+];
 
 function explanationFor(item: DetectionRecordItem): Explanation | null {
   if (item.result_id === 3005) return null;
@@ -88,10 +108,41 @@ function explanationFor(item: DetectionRecordItem): Explanation | null {
 }
 
 export const handlers = [
+  http.get('/api/v1/health', () => HttpResponse.json({ status: 'ok' })),
+  http.get('/api/v1/models', () => {
+    mockModels = initialMockModels.map((item) => ({ ...item }));
+    return HttpResponse.json(mockModels);
+  }),
+  http.post('/api/v1/models/:version/activate', ({ params }) => {
+    const version = String(params.version);
+    const target = mockModels.find((item) => item.version === version);
+    if (!target) return HttpResponse.json({ detail: 'model not found' }, { status: 404 });
+    mockModels = mockModels.map((item) => ({ ...item, is_active: item.version === version }));
+    return HttpResponse.json(mockModels.find((item) => item.version === version));
+  }),
   http.post('/api/v1/auth/login', async ({ request }) => {
     const payload = await request.json() as { username: string; password: string };
     if (!payload.username || payload.password !== 'demo') return HttpResponse.json({ detail: '用户名或密码错误' }, { status: 401 });
-    return HttpResponse.json({ user_id: 1, username: payload.username, role: 'reviewer', access_token: 'mock-access-token', token_type: 'bearer', expires_at: new Date(Date.now() + 1800000).toISOString() });
+    mockRole = payload.username === 'admin' ? 'admin' : 'reviewer';
+    return HttpResponse.json({ user_id: 1, username: payload.username, role: mockRole, access_token: 'mock-access-token', token_type: 'bearer', expires_at: new Date(Date.now() + 1800000).toISOString() });
+  }),
+  http.get('/api/v1/auth/me', () => HttpResponse.json({ user_id: 1, username: mockRole === 'admin' ? 'admin' : 'reviewer', display_name: mockRole === 'admin' ? '系统管理员' : '审核用户', role: mockRole, status: 'active', last_login_at: new Date().toISOString() })),
+  http.put('/api/v1/auth/password', async ({ request }) => {
+    const body = await request.json() as { current_password: string; new_password: string };
+    if (body.current_password !== 'demo') return HttpResponse.json({ detail: 'current password is incorrect' }, { status: 400 });
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
+  http.post('/api/v1/users', async ({ request }) => {
+    if (mockRole !== 'admin') return HttpResponse.json({ detail: 'administrator permission required' }, { status: 403 });
+    const body = await request.json() as { username: string; display_name?: string; role: string };
+    if (body.username === 'existing') return HttpResponse.json({ detail: 'username already exists' }, { status: 409 });
+    return HttpResponse.json({ user_id: 20, username: body.username, display_name: body.display_name ?? null, role: body.role, status: 'active', created_at: new Date().toISOString() }, { status: 201 });
+  }),
+  http.get('/api/v1/evaluations', () => HttpResponse.json(mockEvaluations)),
+  http.get('/api/v1/evaluations/:reportId', ({ params }) => {
+    const item = mockEvaluations.find((report) => report.report_id === Number(params.reportId));
+    return item ? HttpResponse.json(item) : HttpResponse.json({ detail: 'evaluation not found' }, { status: 404 });
   }),
   http.get('/api/v1/results/:resultId', ({ params }) => {
     const resultId = Number(params.resultId);

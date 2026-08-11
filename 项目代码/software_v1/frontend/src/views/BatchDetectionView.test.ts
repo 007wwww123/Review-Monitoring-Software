@@ -15,9 +15,12 @@ async function upload(wrapper: VueWrapper, content = csv, name = 'reviews.csv') 
   await flushPromises();
 }
 
-async function settleTask() {
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  await flushPromises();
+async function settleTask(wrapper: VueWrapper, expected?: string) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushPromises();
+    if (!expected || wrapper.text().includes(expected)) return;
+  }
 }
 
 describe('BatchDetectionView', () => {
@@ -47,7 +50,7 @@ describe('BatchDetectionView', () => {
     await submit.trigger('click');
     expect(submit.attributes('disabled')).toBeDefined();
     await submit.trigger('click');
-    await settleTask();
+    await settleTask(wrapper, '已完成');
     expect(wrapper.text()).toContain('已完成');
     expect(wrapper.text()).toContain('全部评论处理完成');
     expect(wrapper.text()).toContain('1 / 1');
@@ -58,7 +61,7 @@ describe('BatchDetectionView', () => {
     const partial = `${csv}\nREV-2,USER-2,PROD-2,4,2026-08-11T11:00:00+08:00,[partial]`;
     await upload(wrapper, partial);
     await wrapper.get('[data-testid="batch-submit"]').trigger('click');
-    await settleTask();
+    await settleTask(wrapper, '模拟单条处理失败');
     expect(wrapper.text()).toContain('处理成功1');
     expect(wrapper.text()).toContain('处理失败1');
     expect(wrapper.text()).toContain('模拟单条处理失败');
@@ -68,7 +71,7 @@ describe('BatchDetectionView', () => {
     const wrapper = mount(BatchDetectionView);
     await upload(wrapper, csv.replace('商品与描述一致', '[503]'));
     await wrapper.get('[data-testid="batch-submit"]').trigger('click');
-    await settleTask();
+    await settleTask(wrapper, '批量模型服务暂不可用（模拟）');
     expect(wrapper.text()).toContain('批量模型服务暂不可用（模拟）');
   });
 
@@ -77,7 +80,7 @@ describe('BatchDetectionView', () => {
     const wrapper = mount(BatchDetectionView);
     await upload(wrapper);
     await wrapper.get('[data-testid="batch-submit"]').trigger('click');
-    await settleTask();
+    await settleTask(wrapper, '无法连接检测服务');
     expect(wrapper.text()).toContain('无法连接检测服务');
   });
 });

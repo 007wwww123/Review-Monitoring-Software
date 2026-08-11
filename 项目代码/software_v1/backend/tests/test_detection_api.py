@@ -63,6 +63,7 @@ def client(monkeypatch):
         is_active=True,
     ))
     db.add(SysUser(username="reviewer", password_hash=hash_password("test-password"), role="reviewer", status="active"))
+    db.add(SysUser(username="admin", password_hash=hash_password("admin-password"), role="admin", status="active"))
     db.commit()
     service = DetectionService(db, FakeAdapter())
     monkeypatch.setattr(routes, "DetectionService", lambda current_db: service)
@@ -91,6 +92,12 @@ def payload(review_id: str, text: str = "A review"):
 
 def auth_headers(client):
     response = client.post("/api/v1/auth/login", json={"username": "reviewer", "password": "test-password"})
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def admin_headers(client):
+    response = client.post("/api/v1/auth/login", json={"username": "admin", "password": "admin-password"})
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -153,3 +160,32 @@ def test_task_report_creation_and_downloads(client):
     assert csv_download.status_code == 200
     assert csv_download.headers["content-type"].startswith("text/csv")
     assert "metric,value" in csv_download.text
+
+
+def test_login_updates_last_login_and_current_user(client):
+    headers = auth_headers(client)
+    response = client.get("/api/v1/auth/me", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["username"] == "reviewer"
+    assert response.json()["last_login_at"] is not None
+
+
+def test_password_change_validates_current_password_and_allows_new_login(client):
+    headers = auth_headers(client)
+    rejected = client.put("/api/v1/auth/password", json={"current_password": "wrong", "new_password": "new-password"}, headers=headers)
+    assert rejected.status_code == 400
+    changed = client.put("/api/v1/auth/password", json={"current_password": "test-password", "new_password": "new-password"}, headers=headers)
+    assert changed.status_code == 204
+    assert client.post("/api/v1/auth/login", json={"username": "reviewer", "password": "new-password"}).status_code == 200
+
+
+def test_only_admin_can_create_limited_role_users(client):
+    request = {"username": "new-reviewer", "display_name": "New Reviewer", "password": "initial-password", "role": "reviewer"}
+    assert client.post("/api/v1/users", json=request, headers=auth_headers(client)).status_code == 403
+    created = client.post("/api/v1/users", json=request, headers=admin_headers(client))
+    assert created.status_code == 201
+    assert created.json()["role"] == "reviewer"
+    assert client.post("/api/v1/users", json=request, headers=admin_headers(client)).status_code == 409
+    request["username"] = "new-admin"
+    request["role"] = "admin"
+    assert client.post("/api/v1/users", json=request, headers=admin_headers(client)).status_code == 422

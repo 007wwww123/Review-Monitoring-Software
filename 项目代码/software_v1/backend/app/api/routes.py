@@ -1,17 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
-from datetime import date
+from datetime import date, datetime, timezone
 import csv, io
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.ml.adapter import ModelNotReady
-from app.schemas.auth import LoginRequest, LoginResponse
+from app.schemas.auth import (CurrentUserResponse, LoginRequest, LoginResponse,
+                              PasswordChangeRequest, UserCreateRequest,
+                              UserResponse)
 from app.schemas.admin import EvaluationRequest, EvaluationResponse, ModelResponse, ReportRequest, ReportResponse, ResultPage, ResultResponse
 from app.schemas.detection import BatchDetectionRequest, DetectionSubmitResponse, SingleDetectionRequest, SingleDetectionResponse, TaskStatusResponse
 from app.models import SysUser, DetectionResult
-from app.security import create_access_token, current_user, verify_password
+from app.security import (create_access_token, current_user, hash_password,
+                          require_admin, verify_password)
 from app.services.admin import AdminService
 from app.services.detection import DetectionService
 
@@ -27,12 +30,38 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(SysUser).where(SysUser.username == request.username))
     if user is None or user.status != "active" or not verify_password(request.password, user.password_hash):
         raise HTTPException(401, "invalid username or password")
+    user.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.commit()
     token, expires = create_access_token(user)
     return LoginResponse(user_id=user.id, username=user.username, role=user.role, access_token=token, expires_at=expires)
 
 @router.post("/auth/logout", status_code=204, tags=["auth"])
 def logout(_: SysUser = Depends(current_user)):
     return Response(status_code=204)
+
+@router.get("/auth/me", response_model=CurrentUserResponse, tags=["auth"])
+def auth_me(user: SysUser = Depends(current_user)):
+    return CurrentUserResponse(user_id=user.id, username=user.username, display_name=user.display_name, role=user.role, status=user.status, last_login_at=user.last_login_at)
+
+@router.put("/auth/password", status_code=204, tags=["auth"])
+def change_password(request: PasswordChangeRequest, db: Session = Depends(get_db), user: SysUser = Depends(current_user)):
+    if not verify_password(request.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="current password is incorrect")
+    if verify_password(request.new_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="new password must be different")
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+    return Response(status_code=204)
+
+@router.post("/users", response_model=UserResponse, status_code=201, tags=["users"])
+def create_user(request: UserCreateRequest, db: Session = Depends(get_db), _: SysUser = Depends(require_admin)):
+    if db.scalar(select(SysUser.id).where(SysUser.username == request.username)) is not None:
+        raise HTTPException(status_code=409, detail="username already exists")
+    user = SysUser(username=request.username, display_name=request.display_name, password_hash=hash_password(request.password), role=request.role, status="active")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return UserResponse(user_id=user.id, username=user.username, display_name=user.display_name, role=user.role, status=user.status, created_at=user.created_at)
 
 
 @router.post("/detections", response_model=SingleDetectionResponse, status_code=status.HTTP_202_ACCEPTED)

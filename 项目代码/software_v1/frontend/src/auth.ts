@@ -10,3 +10,7 @@ export function saveSession(session: LoginResponse): void {
 }
 export function clearSession(): void { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); }
 export function isAuthenticated(): boolean { return Boolean(getToken()); }
+export function getSession(): LoginResponse | null {
+  try { const value = localStorage.getItem(USER_KEY); return value ? JSON.parse(value) as LoginResponse : null; }
+  catch { return null; }
+}

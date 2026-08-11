@@ -8,8 +8,10 @@ import type {
   SingleDetectionRequest,
   SingleDetectionResponse,
   TaskStatusResponse,
+  ModelVersionResponse,
+  EvaluationResponse,
 } from '../types';
-import type { LoginRequest, LoginResponse } from '../types/auth';
+import type { CurrentUserResponse, LoginRequest, LoginResponse, PasswordChangeRequest, UserCreateRequest, UserResponse } from '../types/auth';
 import { clearSession, getToken, saveSession } from '../auth';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -88,10 +90,26 @@ async function requestBlob(url: string): Promise<Blob> {
   return response.blob();
 }
 
+async function requestNoContent(url: string, init?: RequestInit): Promise<void> {
+  let response: Response;
+  try {
+    const headers = new Headers(init?.headers); const token = getToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    if (init?.body) headers.set('Content-Type', 'application/json');
+    response = await fetch(`${apiBase}${url}`, { ...init, headers });
+  } catch { throw new ApiError('无法连接检测服务，请检查服务是否已启动。', 0); }
+  if (response.status === 401) { clearSession(); window.dispatchEvent(new Event('auth:expired')); }
+  if (!response.ok) throw new ApiError(await parseError(response), response.status);
+}
+
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const session = await requestJson<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(payload) });
   saveSession(session); return session;
 }
+export function getCurrentUser(): Promise<CurrentUserResponse> { return requestJson('/api/v1/auth/me'); }
+export function changePassword(payload: PasswordChangeRequest): Promise<void> { return requestNoContent('/api/v1/auth/password', { method: 'PUT', body: JSON.stringify(payload) }); }
+export async function logout(): Promise<void> { await requestNoContent('/api/v1/auth/logout', { method: 'POST' }); clearSession(); }
+export function createUser(payload: UserCreateRequest): Promise<UserResponse> { return requestJson('/api/v1/users', { method: 'POST', body: JSON.stringify(payload) }); }
 
 export function submitBatchDetection(payload: BatchDetectionRequest): Promise<DetectionSubmitResponse> {
   return requestJson('/api/v1/detections/batch', {
@@ -114,6 +132,21 @@ export function getDetectionRecords(query: DetectionRecordQuery): Promise<Detect
   if (query.date_to) params.set('date_to', query.date_to);
   return requestJson(`/api/v1/results?${params.toString()}`);
 }
+
+export function getServiceHealth(): Promise<{ status: string }> {
+  return requestJson('/api/v1/health');
+}
+
+export function getModelVersions(): Promise<ModelVersionResponse[]> {
+  return requestJson('/api/v1/models');
+}
+
+export function activateModelVersion(version: string): Promise<ModelVersionResponse> {
+  return requestJson(`/api/v1/models/${encodeURIComponent(version)}/activate`, { method: 'POST' });
+}
+
+export function getEvaluations(): Promise<EvaluationResponse[]> { return requestJson('/api/v1/evaluations'); }
+export function getEvaluationDetail(reportId: number): Promise<EvaluationResponse> { return requestJson(`/api/v1/evaluations/${reportId}`); }
 
 export function getDetectionResult(resultId: number): Promise<DetectionResultResponse> {
   return requestJson(`/api/v1/results/${resultId}`);

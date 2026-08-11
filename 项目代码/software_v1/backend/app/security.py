@@ -55,3 +55,9 @@ def current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = De
     if user is None or user.status != "active":
         raise credentials
     return user
+
+
+def require_admin(user: Annotated[SysUser, Depends(current_user)]) -> SysUser:
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="administrator permission required")
+    return user

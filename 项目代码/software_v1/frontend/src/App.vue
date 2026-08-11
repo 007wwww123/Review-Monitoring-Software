@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Activity,
-  BarChart3,
   ClipboardCheck,
   FileClock,
   FileSearch,
@@ -19,13 +18,12 @@ onMounted(() => window.addEventListener('auth:expired', onAuthExpired));
 onBeforeUnmount(() => window.removeEventListener('auth:expired', onAuthExpired));
 
 const navigation = [
-  { label: '系统概览', icon: Activity },
+  { label: '系统概览', icon: Activity, to: '/overview' },
   { label: '单条评论检测', icon: FileSearch, to: '/detections/single' },
   { label: '批量检测任务', icon: Layers3, to: '/detections/batch' },
   { label: '检测记录', icon: FileClock, to: '/results', active: 'records' },
   { label: '结果与证据', icon: ClipboardCheck, to: '/results', active: 'detail' },
-  { label: '模型评估', icon: BarChart3 },
-  { label: '模型与配置', icon: Settings2 },
+  { label: '系统设置', icon: Settings2, to: '/settings' },
 ];
 
 function isNavigationActive(item: { to?: string; active?: string }) {
