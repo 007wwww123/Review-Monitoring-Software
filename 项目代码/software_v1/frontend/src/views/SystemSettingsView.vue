@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { AlertCircle, CheckCircle2, KeyRound, LogOut, Plus, UserRound } from 'lucide-vue-next';
 import { ApiError, changePassword, createUser, getCurrentUser, getEvaluations, getEvaluationDetail, logout } from '../api/client';
 import { clearSession } from '../auth';
@@ -9,6 +9,13 @@ import type { CurrentUserResponse, EvaluationResponse } from '../types';
 import ModelConfigurationView from './ModelConfigurationView.vue';
 
 const router = useRouter();
+const route = useRoute();
+type SettingsSection = 'account' | 'appearance' | 'users' | 'models' | 'evaluations';
+const settingsSections: SettingsSection[] = ['account', 'appearance', 'users', 'models', 'evaluations'];
+const activeSection = computed<SettingsSection>(() => {
+  const section = route.hash.slice(1) as SettingsSection;
+  return settingsSections.includes(section) ? section : 'account';
+});
 const user = ref<CurrentUserResponse | null>(null);
 const evaluations = ref<EvaluationResponse[]>([]);
 const selectedEvaluation = ref<EvaluationResponse | null>(null);
@@ -77,13 +84,19 @@ onMounted(loadSettings);
 <template>
   <section class="page-content settings-page">
     <header class="page-heading settings-heading"><div><span class="eyebrow">系统管理</span><h1>系统设置</h1><p>管理账户安全、界面偏好、模型登记与历史评估</p></div></header>
-    <nav class="settings-anchor-nav" aria-label="设置分区"><a href="#account">账户</a><a href="#appearance">界面</a><a v-if="user?.role === 'admin'" href="#users">账号创建</a><a href="#models">模型</a><a href="#evaluations">评估</a></nav>
-    <div v-if="accountError" class="alert error settings-message" role="alert"><AlertCircle :size="17" />{{ accountError }}</div>
-    <div v-if="accountSuccess" class="alert success settings-message"><CheckCircle2 :size="17" />{{ accountSuccess }}</div>
+    <nav class="settings-anchor-nav" aria-label="设置分区">
+      <RouterLink to="/settings#account" :class="{ active: activeSection === 'account' }">账户</RouterLink>
+      <RouterLink to="/settings#appearance" :class="{ active: activeSection === 'appearance' }">界面</RouterLink>
+      <RouterLink v-if="user?.role === 'admin'" to="/settings#users" :class="{ active: activeSection === 'users' }">账号创建</RouterLink>
+      <RouterLink to="/settings#models" :class="{ active: activeSection === 'models' }">模型</RouterLink>
+      <RouterLink to="/settings#evaluations" :class="{ active: activeSection === 'evaluations' }">评估</RouterLink>
+    </nav>
+    <div v-if="accountError && (activeSection === 'account' || activeSection === 'users')" class="alert error settings-message" role="alert"><AlertCircle :size="17" />{{ accountError }}</div>
+    <div v-if="accountSuccess && (activeSection === 'account' || activeSection === 'appearance' || activeSection === 'users')" class="alert success settings-message"><CheckCircle2 :size="17" />{{ accountSuccess }}</div>
 
     <div class="settings-layout">
-      <main class="settings-main">
-        <section id="account" class="settings-section">
+      <main class="settings-main" :class="`section-${activeSection}`">
+        <section v-show="activeSection === 'account'" id="account" class="settings-section">
           <div class="section-heading"><div><h2>账户信息与安全</h2><p>当前登录账号及密码管理</p></div><UserRound :size="19" /></div>
           <div v-if="loading" class="settings-loading"><span class="spinner dark"></span>正在加载账户信息…</div>
           <template v-else-if="user"><dl class="account-summary"><div><dt>用户名</dt><dd>{{ user.username }}</dd></div><div><dt>显示名称</dt><dd>{{ user.display_name || '未设置' }}</dd></div><div><dt>角色</dt><dd>{{ roleLabel(user.role) }}</dd></div><div><dt>最后登录</dt><dd>{{ user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN') : '暂无记录' }}</dd></div></dl>

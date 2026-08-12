@@ -5,9 +5,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { server } from '../mocks/server';
 import SystemSettingsView from './SystemSettingsView.vue';
 
-async function mountView() {
+async function mountView(hash = '') {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/settings', component: SystemSettingsView }, { path: '/login', component: { template: '<div>login</div>' } }] });
-  await router.push('/settings'); await router.isReady();
+  await router.push(`/settings${hash}`); await router.isReady();
   const wrapper = mount(SystemSettingsView, { global: { plugins: [router] } }); await flushPromises();
   return { wrapper, router };
 }
@@ -62,5 +62,17 @@ describe('SystemSettingsView', () => {
     const { wrapper } = await mountView();
     expect(wrapper.text()).toContain('评估服务暂不可用');
     expect(wrapper.text()).toContain('mock-v1.0.0');
+  });
+
+  it('routes between settings sections even when account loading fails', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ detail: '账户服务暂不可用' }, { status: 500 })));
+    const { wrapper, router } = await mountView('#appearance');
+    expect(wrapper.get('.settings-anchor-nav a.active').text()).toBe('界面');
+    expect(wrapper.get('.settings-main').classes()).toContain('section-appearance');
+    expect(wrapper.find('.settings-message.alert.error').exists()).toBe(false);
+
+    await router.push('/settings#models'); await flushPromises();
+    expect(wrapper.get('.settings-anchor-nav a.active').text()).toBe('模型');
+    expect(wrapper.get('.settings-main').classes()).toContain('section-models');
   });
 });

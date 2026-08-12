@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../mocks/server';
 import DetectionResultDetailView from './DetectionResultDetailView.vue';
 
-async function mountDetail(resultId = 3001) {
+async function mountDetail(resultId = 3001, page: 'summary' | 'evidence' = 'summary') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -13,7 +13,7 @@ async function mountDetail(resultId = 3001) {
       { path: '/results/:resultId', component: DetectionResultDetailView },
     ],
   });
-  await router.push(`/results/${resultId}`);
+  await router.push(`/results/${resultId}?page=${page}`);
   await router.isReady();
   const wrapper = mount(DetectionResultDetailView, { global: { plugins: [router] } });
   await flushPromises();
@@ -36,7 +36,7 @@ describe('DetectionResultDetailView', () => {
   });
 
   it('renders fixed semantic and behavior label order with insufficient evidence', async () => {
-    const wrapper = await mountDetail();
+    const wrapper = await mountDetail(3001, 'evidence');
     expect(wrapper.findAll('.semantic-scores .score-row').map((row) => row.text())).toEqual([
       '真实语义82%', '误导性8%', '夸张性6%', '广告性4%',
     ]);
@@ -48,7 +48,7 @@ describe('DetectionResultDetailView', () => {
   });
 
   it('does not invent evidence when Explanation is absent', async () => {
-    const wrapper = await mountDetail(3005);
+    const wrapper = await mountDetail(3005, 'evidence');
     expect(wrapper.text()).toContain('解释数据不可用');
     expect(wrapper.find('.semantic-scores').exists()).toBe(false);
   });
@@ -89,5 +89,24 @@ describe('DetectionResultDetailView', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('报告服务暂不可用');
     expect(wrapper.text()).toContain('结果摘要');
+  });
+
+  it('splits existing modules between summary and evidence pages', async () => {
+    const wrapper = await mountDetail();
+    expect(wrapper.get('.detail-page-nav a.active').text()).toBe('结果概览');
+    expect(wrapper.get('.summary-section').isVisible()).toBe(true);
+    expect(wrapper.get('.metadata-section').isVisible()).toBe(true);
+    expect(wrapper.get('.report-section').isVisible()).toBe(true);
+    expect(wrapper.get('.disclaimer-section').isVisible()).toBe(true);
+    expect(wrapper.get('.evidence-section').isVisible()).toBe(false);
+
+    await wrapper.get('.detail-page-nav a:nth-child(2)').trigger('click');
+    await flushPromises();
+    expect(wrapper.get('.detail-page-nav a.active').text()).toBe('融合证据');
+    expect(wrapper.get('.detail-layout').classes()).toContain('detail-page-evidence');
+    expect(wrapper.findAll('.evidence-section').every((section) => section.attributes('style') !== 'display: none;')).toBe(true);
+    expect(wrapper.get('.fusion-section').attributes('style')).not.toBe('display: none;');
+    expect(wrapper.get('.summary-section').attributes('style')).toBe('display: none;');
+    expect(wrapper.get('.detail-side').attributes('style')).toBe('display: none;');
   });
 });

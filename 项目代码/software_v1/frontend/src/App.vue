@@ -5,14 +5,22 @@ import {
   FileClock,
   FileSearch,
   Layers3,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings2,
   ShieldCheck,
 } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
+const SIDEBAR_COLLAPSED_KEY = 'review-monitoring.sidebar-collapsed';
+const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true');
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed.value));
+}
 function onAuthExpired() { void router.replace({ path: '/login', query: { redirect: route.fullPath } }); }
 onMounted(() => window.addEventListener('auth:expired', onAuthExpired));
 onBeforeUnmount(() => window.removeEventListener('auth:expired', onAuthExpired));
@@ -34,7 +42,7 @@ function isNavigationActive(item: { to?: string; active?: string }) {
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark"><ShieldCheck :size="22" /></span>
@@ -42,6 +50,17 @@ function isNavigationActive(item: { to?: string; active?: string }) {
           <strong>评论风控台</strong>
           <small>V1.0.0 开发版</small>
         </span>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          :aria-label="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+          :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+          :aria-expanded="!sidebarCollapsed"
+          @click="toggleSidebar"
+        >
+          <PanelLeftOpen v-if="sidebarCollapsed" :size="17" />
+          <PanelLeftClose v-else :size="17" />
+        </button>
       </div>
 
       <nav class="navigation" aria-label="主导航">
@@ -53,6 +72,7 @@ function isNavigationActive(item: { to?: string; active?: string }) {
           class="nav-item"
           :class="{ active: isNavigationActive(item), disabled: !item.to }"
           :aria-disabled="!item.to"
+          :title="sidebarCollapsed ? item.label : undefined"
         >
           <component :is="item.icon" :size="18" />
           <span>{{ item.label }}</span>

@@ -32,6 +32,7 @@ const creatingReport = ref(false);
 const downloading = ref<'json' | 'csv' | null>(null);
 
 const resultId = computed(() => Number(route.params.resultId));
+const detailPage = computed(() => route.query.page === 'evidence' ? 'evidence' : 'summary');
 const semanticOrder = ['real', 'misleading', 'exaggerated', 'advertising'] as const;
 const behaviorOrder = ['normal', 'review_manipulation', 'crowdturfing', 'bot_like', 'insufficient_evidence'] as const;
 const authenticityLabels: Record<Authenticity, string> = { real: '真实', fake: '疑似虚假' };
@@ -131,9 +132,20 @@ watch(() => route.params.resultId, loadResult);
         </div>
       </header>
 
-      <div class="detail-layout">
+      <nav class="detail-page-nav" aria-label="结果详情分页">
+        <RouterLink
+          :to="{ path: route.path, query: { ...route.query, page: 'summary' } }"
+          :class="{ active: detailPage === 'summary' }"
+        >结果概览</RouterLink>
+        <RouterLink
+          :to="{ path: route.path, query: { ...route.query, page: 'evidence' } }"
+          :class="{ active: detailPage === 'evidence' }"
+        >融合证据</RouterLink>
+      </nav>
+
+      <div class="detail-layout" :class="`detail-page-${detailPage}`">
         <main class="detail-main">
-          <section class="detail-section summary-section">
+          <section v-show="detailPage === 'summary'" class="detail-section summary-section">
             <div class="section-heading"><div><h2>结果摘要</h2><p>最终融合输出与审核建议</p></div><span class="action-badge" :class="result.action">{{ actionLabels[result.action] }}</span></div>
             <dl class="summary-grid">
               <div><dt>融合虚假概率</dt><dd>{{ percent(result.explanation?.final.fake_probability ?? (result.authenticity === 'fake' ? result.confidence : 1 - result.confidence)) }}</dd></div>
@@ -146,7 +158,7 @@ watch(() => route.params.resultId, loadResult);
           </section>
 
           <template v-if="result.explanation">
-            <section class="detail-section evidence-section">
+            <section v-show="detailPage === 'evidence'" class="detail-section evidence-section">
               <div class="section-heading"><div><h2>语义相对匹配度</h2><p>固定四标签顺序，分数未经独立校准时不代表确定类别</p></div><span class="selected-type">{{ semanticLabels[result.explanation.semantic.selected_type] }}</span></div>
               <dl class="evidence-meta">
                 <div><dt>ALBERT真实辅助概率</dt><dd>{{ percent(result.explanation.semantic.authenticity_scores.real) }}</dd></div>
@@ -159,7 +171,7 @@ watch(() => route.params.resultId, loadResult);
               </div>
             </section>
 
-            <section class="detail-section evidence-section">
+            <section v-show="detailPage === 'evidence'" class="detail-section evidence-section">
               <div class="section-heading"><div><h2>行为相对匹配度</h2><p>行为分支属于真实性代理任务，不是独立异常行为真值</p></div><span class="selected-type" :class="{ warning: !result.explanation.behavior.available }">{{ behaviorLabels[result.explanation.behavior.selected_type] }}</span></div>
               <div v-if="!result.explanation.behavior.available" class="evidence-note detail-warning"><AlertCircle :size="17" /><p><strong>行为证据不足</strong><span>历史长度为 0，该状态不能解释为用户行为正常。</span></p></div>
               <div class="score-list behavior-scores">
@@ -176,7 +188,7 @@ watch(() => route.params.resultId, loadResult);
               </dl>
             </section>
 
-            <section class="detail-section fusion-section">
+            <section v-show="detailPage === 'evidence'" class="detail-section fusion-section">
               <div class="section-heading"><div><h2>融合权重摘要</h2><p>权重描述本次融合比例，不构成因果归因</p></div><Scale :size="19" /></div>
               <div class="fusion-bar"><span class="semantic-part" :style="{ width: percent(result.explanation.fusion.semantic_weight) }"></span><span class="behavior-part" :style="{ width: percent(result.explanation.fusion.behavior_weight) }"></span></div>
               <div class="fusion-legend"><span><i class="semantic-dot"></i>语义 {{ percent(result.explanation.fusion.semantic_weight) }}</span><span><i class="behavior-dot"></i>行为 {{ percent(result.explanation.fusion.behavior_weight) }}</span></div>
@@ -188,18 +200,18 @@ watch(() => route.params.resultId, loadResult);
               </dl>
             </section>
 
-            <section class="detail-section disclaimer-section">
+            <section v-show="detailPage === 'summary'" class="detail-section disclaimer-section">
               <div class="section-heading"><div><h2>解释边界</h2><p>审核和报告必须保留以下说明</p></div><ShieldAlert :size="19" /></div>
               <ol><li v-for="(item, index) in result.explanation.limitations" :key="index"><span>{{ index + 1 }}</span><p>{{ item }}</p></li></ol>
             </section>
           </template>
 
-          <section v-else class="detail-section explanation-empty">
+          <section v-else v-show="detailPage === 'evidence'" class="detail-section explanation-empty">
             <AlertCircle :size="24" /><div><h2>解释数据不可用</h2><p>该结果没有保存 Explanation 快照，页面不会补造证据或细分类结论。</p></div>
           </section>
         </main>
 
-        <aside class="detail-side">
+        <aside v-show="detailPage === 'summary'" class="detail-side">
           <section class="detail-section metadata-section">
             <div class="section-heading"><div><h2>检测信息</h2><p>结果追溯字段</p></div></div>
             <dl class="result-list detail-metadata">
