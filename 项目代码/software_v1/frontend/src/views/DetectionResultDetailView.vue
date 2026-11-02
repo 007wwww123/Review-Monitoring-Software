@@ -35,6 +35,13 @@ const fakeProbability = computed(() => {
 const semanticItems = computed(() => SEMANTIC_ORDER.map((key) => ({ key, label: semanticLabels[key], value: explanation.value?.semantic.scores[key] ?? 0 })));
 const behaviorItems = computed(() => BEHAVIOR_ORDER.map((key) => ({ key, label: behaviorLabels[key], value: explanation.value?.behavior.scores[key] ?? 0 })));
 const actionTone = { keep: 'ok', review: 'warn', block: 'fake' } as const;
+const fusionParts = computed(() => explanation.value ? [
+  { key: 'semantic', label: '语义', value: explanation.value.fusion.semantic_weight, tone: 'primary' as const },
+  { key: 'behavior', label: '行为', value: explanation.value.fusion.behavior_weight, tone: 'behavior' as const },
+] : []);
+const fusionRatio = computed(() => explanation.value
+  ? `${(explanation.value.fusion.semantic_weight * 100).toFixed(1)} : ${(explanation.value.fusion.behavior_weight * 100).toFixed(1)}`
+  : '');
 const stateLabel = (state: string) => evidenceStateLabels[state] ?? state;
 
 async function loadResult() {
@@ -201,7 +208,7 @@ watch(() => route.params.resultId, loadResult);
           </AppCard>
 
           <AppCard title="门控权重" subtitle="融合比例摘要，不构成因果归因" class="fusion-card">
-            <DonutChart :semantic="explanation.fusion.semantic_weight" :behavior="explanation.fusion.behavior_weight" />
+            <DonutChart :parts="fusionParts" :center="fusionRatio" caption="语义 : 行为" />
             <ul class="legend">
               <li><i class="s"></i>语义证据<em :class="{ ok: explanation.evidence.semantic_evidence_state === 'available' }">{{ stateLabel(explanation.evidence.semantic_evidence_state) }}</em><b class="num">{{ percent(explanation.fusion.semantic_weight) }}</b></li>
               <li><i class="b"></i>行为证据<em :class="{ ok: explanation.evidence.behavior_evidence_state === 'available' }">{{ stateLabel(explanation.evidence.behavior_evidence_state) }}</em><b class="num">{{ percent(explanation.fusion.behavior_weight) }}</b></li>

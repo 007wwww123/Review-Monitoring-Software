@@ -18,7 +18,7 @@ describe('SystemOverviewView', () => {
     expect(wrapper.text()).toContain('检测服务正常');
     expect(wrapper.text()).toContain('检测记录总数26');
     expect(wrapper.text()).toContain('统计口径：当前加载的最近 100 条记录');
-    expect(wrapper.findAll('.recent-item')).toHaveLength(5);
+    expect(wrapper.findAll('.recent-row')).toHaveLength(5);
     expect(wrapper.get('a[href="/results/3001"]').attributes('href')).toBe('/results/3001');
   });
 

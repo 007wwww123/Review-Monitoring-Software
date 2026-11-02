@@ -133,7 +133,7 @@ export function getDetectionRecords(query: DetectionRecordQuery): Promise<Detect
   return requestJson(`/api/v1/results?${params.toString()}`);
 }
 
-export function getServiceHealth(): Promise<{ status: string }> {
+export function getServiceHealth(): Promise<{ status: string; model?: string }> {
   return requestJson('/api/v1/health');
 }
 
