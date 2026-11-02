@@ -30,7 +30,7 @@ describe('BatchDetectionView', () => {
     await upload(wrapper);
     expect(wrapper.text()).toContain('reviews.csv');
     expect(wrapper.text()).toContain('1 条评论');
-    expect(wrapper.findAll('.batch-table tbody input')).toHaveLength(6);
+    expect(wrapper.findAll('.preview-table tbody input')).toHaveLength(6);
     expect(wrapper.get('[data-testid="batch-submit"]').attributes('disabled')).toBeUndefined();
   });
 

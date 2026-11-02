@@ -3,6 +3,7 @@ import { FileSearch, History, Layers3, LayoutGrid, PanelLeftClose, PanelLeftOpen
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppLogo from './components/AppLogo.vue';
+import DualStreamIllustration from './components/DualStreamIllustration.vue';
 import { getSession } from './auth';
 import { APP_NAME, APP_VERSION } from './brand';
 
@@ -40,7 +41,13 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
 <template>
   <div v-if="isAuthLayout" class="auth-shell">
     <header class="auth-header">
-      <div class="auth-brand"><AppLogo /><strong>{{ APP_NAME }}</strong><span class="version">{{ APP_VERSION }}</span></div>
+      <div class="auth-brand"><AppLogo /><span class="version">{{ APP_VERSION }}</span></div>
+      <div class="auth-intro">
+        <h1>{{ APP_NAME }}</h1>
+        <p>评论文本经 ALBERT 语义编码、用户行为经 GRU 时序编码，两路证据由自适应门控融合，给出辅助审核建议。</p>
+      </div>
+      <DualStreamIllustration />
+      <small class="auth-foot">检测结果仅作为辅助审核建议，不替代人工事实认定。</small>
     </header>
     <main class="auth-main">
       <RouterView :key="route.fullPath" />
@@ -87,28 +94,35 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
 </template>
 
 <style scoped>
+.auth-shell { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(400px, 1fr); min-height: 100vh; background: var(--color-bg); }
+.auth-header { display: flex; flex-direction: column; gap: 28px; padding: 44px 56px; background: var(--color-brand-deep); color: #fff; }
 .auth-brand { display: flex; align-items: center; gap: 10px; }
-.auth-brand strong { font-size: 15px; }
+.auth-brand :deep(.app-logo) { background: rgb(255 255 255 / 10%); }
+.auth-intro { margin-top: auto; }
+.auth-intro h1 { max-width: 520px; margin: 0; font-size: 30px; line-height: 1.4; text-wrap: balance; }
+.auth-intro p { max-width: 480px; margin: 14px 0 0; color: rgb(255 255 255 / 72%); font-size: 14px; line-height: 1.8; }
+.auth-foot { margin-top: auto; color: rgb(255 255 255 / 55%); font-size: 12px; }
+.auth-main { display: grid; place-items: center; padding: 40px 24px; }
 
 .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; transition: grid-template-columns .2s ease; }
 .shell.collapsed { grid-template-columns: 72px minmax(0, 1fr); }
 .side { position: sticky; top: 0; display: flex; height: 100vh; flex-direction: column; padding: 18px 14px; background: var(--color-sidebar); }
 
-.brand { display: flex; align-items: flex-start; gap: 10px; padding: 4px 6px 18px; border-bottom: 1px solid #dde0ec; }
+.brand { display: flex; align-items: flex-start; gap: 10px; padding: 4px 6px 18px; border-bottom: 1px solid var(--color-sidebar-line); }
 .brand-text strong { display: block; font-size: 13px; line-height: 1.45; text-wrap: balance; }
 .version { display: inline-block; margin-top: 4px; padding: 0 6px; border-radius: 4px; background: var(--color-surface); color: var(--color-primary); font-size: 11px; font-weight: 600; }
-.auth-brand .version { margin-top: 0; background: var(--color-primary-soft); }
+.auth-brand .version { margin-top: 0; background: var(--color-accent); color: var(--color-on-accent); }
 
 .side-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 14px; }
 .side-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: var(--color-text-secondary); text-decoration: none; white-space: nowrap; }
 .side-nav a svg { flex: none; opacity: .75; }
-.side-nav a:hover { background: rgb(255 255 255 / 55%); }
-.side-nav a.active { background: var(--color-surface); box-shadow: 0 1px 2px rgb(22 26 51 / 8%), 0 0 0 1px rgb(22 26 51 / 4%); color: var(--color-primary); font-weight: 600; }
+.side-nav a:hover { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
+.side-nav a.active { background: var(--color-surface); box-shadow: var(--shadow-raised); color: var(--color-primary); font-weight: 600; }
 .side-nav a.active svg { color: var(--color-behavior); opacity: 1; }
 
 .side-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; }
 .me { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 10px; border-radius: 10px; background: var(--color-surface); font-size: 13px; }
-.avatar { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-primary); font-size: 12px; }
+.avatar { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 12px; }
 .me-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me-text small { display: block; color: var(--color-text-muted); font-size: 12px; }
 .side-toggle { display: grid; flex: none; width: 30px; height: 30px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-muted); }
@@ -124,6 +138,8 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
 .main { min-width: 0; }
 
 @media (max-width: 760px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-header { padding: 28px 24px; }
   .shell, .shell.collapsed { display: block; }
   .side { position: static; height: auto; }
   .side-nav { flex-direction: row; overflow-x: auto; }

@@ -8,10 +8,16 @@
   --color-accent: #c8f03c;    /* 酸性黄绿：小面积点睛（正常、可用、选中） */
 
   /* 浅色底，由主色派生 */
-  --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, #fff);
-  --color-behavior-soft: color-mix(in srgb, var(--color-behavior) 10%, #fff);
-  --color-fake-soft: color-mix(in srgb, var(--color-fake) 8%, #fff);
-  --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, #fff);
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, var(--color-mix-base));
+  --color-behavior-soft: color-mix(in srgb, var(--color-behavior) 10%, var(--color-mix-base));
+  --color-fake-soft: color-mix(in srgb, var(--color-fake) 8%, var(--color-mix-base));
+  --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, var(--color-mix-base));
+
+  /* 固定色：不随主题变化 */
+  --color-brand-deep: #1c2257;  /* 登录页品牌区、Logo 底色 */
+  --color-on-accent: #1c2257;   /* 黄绿底上的文字 */
+  --color-on-primary: #fff;     /* 主色实底上的文字 */
+  --color-mix-base: #fff;       /* 派生浅色底时混入的底色 */
 
   /* 中性色 */
   --color-bg: #f3f4f8;
@@ -23,15 +29,44 @@
   --color-text-secondary: #475069;
   --color-text-muted: #6c7189;
   --color-track: #eef0f5;
+  --color-line-strong: #c9cedd;
+  --color-sidebar-line: #dde0ec;
+  --color-placeholder: #a3a8bb;
 
   --radius-card: 12px;
   --radius-control: 9px;
   --shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 5%);
+  --shadow-raised: 0 1px 2px rgb(22 26 51 / 8%), 0 0 0 1px rgb(22 26 51 / 4%);
   --font-sans: "PingFang SC", "Microsoft YaHei", Inter, Arial, sans-serif;
 
   color: var(--color-text);
   background: var(--color-bg);
   font-family: var(--font-sans);
+}
+
+/* 深色主题：主色提亮，主色实底上的文字改为深色 */
+[data-theme="dark"] {
+  --color-primary: #9aa6ff;
+  --color-behavior: #ff7c5e;
+  --color-fake: #ff5a87;
+  --color-warn: #e3a92b;
+  --color-on-primary: #141834;
+  --color-mix-base: #1b1f3a;
+  --color-bg: #11142a;
+  --color-surface: #1b1f3a;
+  --color-surface-muted: #22274a;
+  --color-sidebar: #161a33;
+  --color-line: #2d3258;
+  --color-line-strong: #4a5080;
+  --color-sidebar-line: #262b4d;
+  --color-placeholder: #6c7196;
+  --color-text: #e9ebf7;
+  --color-text-secondary: #b8bcd8;
+  --color-text-muted: #8a8fb2;
+  --color-track: #2a2f55;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
+  color-scheme: dark;
 }
 
 .num { font-variant-numeric: tabular-nums; }

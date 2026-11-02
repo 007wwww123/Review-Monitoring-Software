@@ -18,8 +18,8 @@
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 14px; line-height: 20px; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .btn:hover:not(:disabled) { border-color: var(--color-primary); }
 .btn:disabled { cursor: not-allowed; opacity: .55; }
-.btn.primary { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
-.btn.primary:hover:not(:disabled) { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-primary); }
+.btn.primary { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-on-primary); }
+.btn.primary:hover:not(:disabled) { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
 .btn.small { padding: 4px 10px; font-size: 13px; }
 .btn.icon { width: 34px; padding: 7px 0; }
 .btn.text { padding: 4px 6px; border-color: transparent; background: transparent; color: var(--color-primary); }
@@ -29,7 +29,7 @@
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .tag.fake { background: var(--color-fake-soft); color: var(--color-fake); }
 .tag.warn { background: var(--color-warn-soft); color: var(--color-warn); }
-.tag.ok { background: var(--color-accent); color: var(--color-primary); }
+.tag.ok { background: var(--color-accent); color: var(--color-on-accent); }
 .tag.primary { background: var(--color-primary-soft); color: var(--color-primary); }
 .tag.behavior { background: var(--color-behavior-soft); color: color-mix(in srgb, var(--color-behavior) 80%, #000); }
 .tag.neutral { background: var(--color-track); color: var(--color-text-secondary); }
@@ -37,8 +37,8 @@
 /* 状态 */
 .state-card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); color: var(--color-text-secondary); text-align: center; }
 .state-card.error { color: var(--color-fake); }
-.alert-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 14px; border-radius: var(--radius-control); background: var(--color-fake-soft); color: var(--color-fake); font-size: 13px; }
-.alert-bar.ok { background: color-mix(in srgb, var(--color-accent) 30%, #fff); color: var(--color-primary); }
+.alert-bar { display: flex; align-items: center; gap: 8px; max-height: 180px; margin-bottom: 16px; padding: 10px 14px; overflow-y: auto; border-radius: var(--radius-control); background: var(--color-fake-soft); color: var(--color-fake); font-size: 13px; overflow-wrap: anywhere; }
+.alert-bar.ok { background: color-mix(in srgb, var(--color-accent) 30%, var(--color-mix-base)); color: var(--color-text); }
 .alert-bar.warn { background: var(--color-warn-soft); color: var(--color-warn); }
 .alert-bar svg { flex: none; }
 .empty-hint { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 16px; color: var(--color-text-muted); font-size: 13px; text-align: center; }
@@ -52,7 +52,7 @@
 .ui-field > span em { margin-left: 2px; color: var(--color-fake); font-style: normal; }
 .ui-input { width: 100%; min-width: 0; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-control); outline: 0; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 14px; line-height: 20px; }
 .ui-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
-.ui-input::placeholder { color: #a3a8bb; }
+.ui-input::placeholder { color: var(--color-placeholder); }
 textarea.ui-input { min-height: 120px; resize: vertical; line-height: 1.7; }
 .ui-field .error-text { color: var(--color-fake); font-size: 12px; }
 .ui-field.invalid .ui-input { border-color: var(--color-fake); }

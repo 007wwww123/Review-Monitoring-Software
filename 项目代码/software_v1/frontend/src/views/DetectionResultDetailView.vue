@@ -272,8 +272,8 @@ watch(() => route.params.resultId, loadResult);
 .flow { display: grid; grid-template-columns: 1fr 34px 1fr 34px 1fr; align-items: center; }
 .flow-col { display: flex; flex-direction: column; gap: 12px; }
 .flow-arrows { display: flex; flex-direction: column; gap: 76px; }
-.flow-arrows i { position: relative; display: block; height: 2px; margin: 0 5px; background: #c9cedd; }
-.flow-arrows i::after { position: absolute; top: -4px; right: -1px; border: 5px solid transparent; border-left: 7px solid #c9cedd; content: ""; }
+.flow-arrows i { position: relative; display: block; height: 2px; margin: 0 5px; background: var(--color-line-strong); }
+.flow-arrows i::after { position: absolute; top: -4px; right: -1px; border: 5px solid transparent; border-left: 7px solid var(--color-line-strong); content: ""; }
 .node { display: flex; flex-direction: column; padding: 10px 14px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); }
 .node-tag { display: flex; align-items: center; gap: 7px; color: var(--color-text-muted); font-size: 12px; }
 .node-tag i { width: 6px; height: 6px; border-radius: 50%; }
@@ -282,19 +282,19 @@ watch(() => route.params.resultId, loadResult);
 .node-figure { font-size: 22px; line-height: 1.3; }
 .node-figure.muted { color: var(--color-text-muted); font-size: 18px; }
 .node.input { background: var(--color-surface-muted); }
-.node.semantic { border-color: color-mix(in srgb, var(--color-primary) 18%, #fff); background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 4%, #fff), #fff 70%); }
+.node.semantic { border-color: color-mix(in srgb, var(--color-primary) 18%, var(--color-mix-base)); background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 4%, var(--color-mix-base)), var(--color-surface) 70%); }
 .node.semantic .node-tag i { background: var(--color-primary); }
 .node.semantic .node-figure { color: var(--color-primary); }
-.node.behavior { border-color: color-mix(in srgb, var(--color-behavior) 22%, #fff); background: linear-gradient(180deg, color-mix(in srgb, var(--color-behavior) 5%, #fff), #fff 70%); }
+.node.behavior { border-color: color-mix(in srgb, var(--color-behavior) 22%, var(--color-mix-base)); background: linear-gradient(180deg, color-mix(in srgb, var(--color-behavior) 5%, var(--color-mix-base)), var(--color-surface) 70%); }
 .node.behavior .node-tag i { background: var(--color-behavior); }
 .node.behavior .node-figure:not(.muted) { color: var(--color-behavior); }
-.node.gate { border-color: color-mix(in srgb, var(--color-primary) 22%, #fff); background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #fff), #fff); }
+.node.gate { border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-mix-base)); background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, var(--color-mix-base)), var(--color-surface)); }
 .split { display: flex; height: 8px; margin: 8px 0 4px; overflow: hidden; border-radius: 4px; }
 .split .s { background: var(--color-primary); }
 .split .b { background: var(--color-behavior); }
-.node.outcome.fake { border-color: color-mix(in srgb, var(--color-fake) 22%, #fff); background: var(--color-fake-soft); }
+.node.outcome.fake { border-color: color-mix(in srgb, var(--color-fake) 22%, var(--color-mix-base)); background: var(--color-fake-soft); }
 .node.outcome.fake .outcome-title { color: var(--color-fake); }
-.node.outcome.real { border-color: color-mix(in srgb, var(--color-primary) 22%, #fff); background: var(--color-primary-soft); }
+.node.outcome.real { border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-mix-base)); background: var(--color-primary-soft); }
 .node.outcome.real .outcome-title { color: var(--color-primary); }
 
 .row-evidence { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
@@ -310,7 +310,7 @@ watch(() => route.params.resultId, loadResult);
 .legend i.b { background: var(--color-behavior); }
 .legend i.n { background: var(--color-line); }
 .legend em { padding: 0 6px; border-radius: 4px; background: var(--color-warn-soft); color: var(--color-warn); font-size: 11px; font-style: normal; font-weight: 700; }
-.legend em.ok { background: var(--color-accent); color: var(--color-primary); }
+.legend em.ok { background: var(--color-accent); color: var(--color-on-accent); }
 .legend b { margin-left: auto; color: var(--color-text); font-weight: 500; }
 
 .explanation-empty, .report-card { margin-bottom: 16px; }

@@ -39,7 +39,7 @@ const segments = computed(() => {
 .fake { stroke: var(--color-fake); }
 .warn { stroke: var(--color-warn); }
 .accent { stroke: var(--color-accent); }
-.neutral { stroke: #c9cedd; }
+.neutral { stroke: var(--color-line-strong); }
 .figure { fill: var(--color-text); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .caption { fill: var(--color-text-muted); font-size: 12px; }
 </style>

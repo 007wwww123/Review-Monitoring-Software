@@ -20,10 +20,10 @@ defineProps<{ items: { key: string; label: string; value: number; text?: string;
 <style scoped>
 .score-row { display: grid; grid-template-columns: 84px 1fr 52px; gap: 10px; align-items: center; margin: 10px 0; font-size: 13px; }
 .track { height: 8px; overflow: hidden; border-radius: 4px; background: var(--color-track); }
-.track i { display: block; height: 100%; border-radius: 4px; background: color-mix(in srgb, var(--color-primary) 35%, #fff); }
-.primary .track i { background: color-mix(in srgb, var(--color-primary) 35%, #fff); }
+.track i { display: block; height: 100%; border-radius: 4px; background: color-mix(in srgb, var(--color-primary) 35%, var(--color-mix-base)); }
+.primary .track i { background: color-mix(in srgb, var(--color-primary) 35%, var(--color-mix-base)); }
 .primary .selected .track i { background: var(--color-primary); }
-.behavior .track i { background: color-mix(in srgb, var(--color-behavior) 38%, #fff); }
+.behavior .track i { background: color-mix(in srgb, var(--color-behavior) 38%, var(--color-mix-base)); }
 .behavior .selected .track i { background: var(--color-behavior); }
 .track i.solid.primary { background: var(--color-primary); }
 .track i.solid.behavior { background: var(--color-behavior); }

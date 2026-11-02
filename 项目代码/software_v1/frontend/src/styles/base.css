@@ -1,0 +1,17 @@
+/* 基础重置与少量全局工具类 */
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input, select, textarea { font: inherit; letter-spacing: 0; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* 只给读屏软件看的文字 */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* 加载动画：默认用在主色按钮上，.dark 用在浅色背景上 */
+.spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid color-mix(in srgb, var(--color-on-primary) 45%, transparent); border-top-color: var(--color-on-primary); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; }
+.spinner.dark { border-color: var(--color-line); border-top-color: var(--color-primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 紧凑密度：表格行距收紧 */
+[data-density="compact"] .ui-table td { padding-top: 7px; padding-bottom: 7px; }

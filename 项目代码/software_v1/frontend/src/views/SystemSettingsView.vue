@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { AlertCircle, CheckCircle2, KeyRound, LogOut, Plus, UserRound } from 'lucide-vue-next';
+import { AlertCircle, BarChart3, CheckCircle2, Cpu, KeyRound, LogOut, Palette, UserPlus, UserRound } from 'lucide-vue-next';
 import { ApiError, changePassword, createUser, getCurrentUser, getEvaluations, getEvaluationDetail, logout } from '../api/client';
 import { clearSession } from '../auth';
 import { applyPreferences, getPreferences, type DensityPreference, type ThemePreference } from '../preferences';
 import type { CurrentUserResponse, EvaluationResponse } from '../types';
 import ModelConfigurationView from './ModelConfigurationView.vue';
+import AppCard from '../components/AppCard.vue';
+import { authenticityLabels, formatDateTime } from '../labels';
 
 const router = useRouter();
 const route = useRoute();
@@ -26,7 +28,7 @@ const userForm = reactive({ username: '', display_name: '', password: '', role: 
 const preferences = reactive(getPreferences());
 const savingPassword = ref(false); const creatingUser = ref(false); const signingOut = ref(false);
 const metrics = computed(() => selectedEvaluation.value ? [
-  ['Accuracy', selectedEvaluation.value.accuracy], ['Precision', selectedEvaluation.value.precision], ['Recall', selectedEvaluation.value.recall], ['F1', selectedEvaluation.value.f1], ['AUC', selectedEvaluation.value.auc],
+  ['准确率 Accuracy', selectedEvaluation.value.accuracy], ['精确率 Precision', selectedEvaluation.value.precision], ['召回率 Recall', selectedEvaluation.value.recall], ['F1 值', selectedEvaluation.value.f1], ['AUC', selectedEvaluation.value.auc],
 ] as const : []);
 const matrix = computed(() => {
   const raw = selectedEvaluation.value?.confusion_matrix;
@@ -35,6 +37,19 @@ const matrix = computed(() => {
   if (!values.every((row) => Array.isArray(row) && row.length === labels.length && row.every((value) => typeof value === 'number'))) return null;
   return { labels: labels as string[], values: values as number[][] };
 });
+
+const sections = computed(() => [
+  { key: 'account', label: '账户与安全', icon: UserRound },
+  { key: 'appearance', label: '界面偏好', icon: Palette },
+  ...(user.value?.role === 'admin' ? [{ key: 'users', label: '账号创建', icon: UserPlus }] : []),
+  { key: 'models', label: '模型版本', icon: Cpu },
+  { key: 'evaluations', label: '评估历史', icon: BarChart3 },
+] as { key: SettingsSection; label: string; icon: unknown }[]);
+// 混淆矩阵按数值深浅着色
+const matrixMax = computed(() => Math.max(1, ...(matrix.value?.values.flat() ?? [0])));
+const cellStyle = (value: number) => ({ background: `color-mix(in srgb, var(--color-primary) ${Math.round((value / matrixMax.value) * 70) + 6}%, var(--color-surface))`, color: value / matrixMax.value > 0.5 ? 'var(--color-on-primary)' : 'var(--color-text)' });
+const matrixLabel = (label: string) => (authenticityLabels as Record<string, string>)[label] ?? label;
+const splitLabels: Record<string, string> = { train: '训练集', val: '验证集', test: '测试集', production_review: '线上复核集' };
 
 function metric(value: number | null) { return value === null ? '指标不可用' : `${(value * 100).toFixed(1)}%`; }
 function roleLabel(role: string) { return ({ admin: '管理员', reviewer: '审核员', operator: '操作员' } as Record<string, string>)[role] ?? role; }
@@ -81,37 +96,165 @@ onMounted(loadSettings);
 </script>
 
 <template>
-  <section class="page-content settings-page">
-    <header class="page-heading settings-heading"><div><span class="eyebrow">系统管理</span><h1>系统设置</h1><p>管理账户安全、界面偏好、模型登记与历史评估</p></div></header>
-    <nav class="settings-anchor-nav" aria-label="设置分区">
-      <RouterLink to="/settings#account" :class="{ active: activeSection === 'account' }">账户</RouterLink>
-      <RouterLink to="/settings#appearance" :class="{ active: activeSection === 'appearance' }">界面</RouterLink>
-      <RouterLink v-if="user?.role === 'admin'" to="/settings#users" :class="{ active: activeSection === 'users' }">账号创建</RouterLink>
-      <RouterLink to="/settings#models" :class="{ active: activeSection === 'models' }">模型</RouterLink>
-      <RouterLink to="/settings#evaluations" :class="{ active: activeSection === 'evaluations' }">评估</RouterLink>
-    </nav>
-    <div v-if="accountError && (activeSection === 'account' || activeSection === 'users')" class="alert error settings-message" role="alert"><AlertCircle :size="17" />{{ accountError }}</div>
-    <div v-if="accountSuccess && (activeSection === 'account' || activeSection === 'appearance' || activeSection === 'users')" class="alert success settings-message"><CheckCircle2 :size="17" />{{ accountSuccess }}</div>
+  <section class="page settings-page">
+    <nav class="crumb" aria-label="面包屑">系统管理 / <b>模型与设置</b></nav>
+    <header class="page-title">
+      <h1>模型与设置</h1>
+      <span class="page-id">账户安全、界面偏好、模型登记与历史评估</span>
+    </header>
 
     <div class="settings-layout">
-      <main class="settings-main" :class="`section-${activeSection}`">
-        <section v-show="activeSection === 'account'" id="account" class="settings-section">
-          <div class="section-heading"><div><h2>账户信息与安全</h2><p>当前登录账号及密码管理</p></div><UserRound :size="19" /></div>
-          <div v-if="loading" class="settings-loading"><span class="spinner dark"></span>正在加载账户信息…</div>
-          <template v-else-if="user"><dl class="account-summary"><div><dt>用户名</dt><dd>{{ user.username }}</dd></div><div><dt>显示名称</dt><dd>{{ user.display_name || '未设置' }}</dd></div><div><dt>角色</dt><dd>{{ roleLabel(user.role) }}</dd></div><div><dt>最后登录</dt><dd>{{ user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN') : '暂无记录' }}</dd></div></dl>
-            <form class="settings-form" @submit.prevent="submitPassword"><h3><KeyRound :size="16" />修改密码</h3><div class="settings-form-grid"><label class="field"><span>当前密码</span><input v-model="passwordForm.current_password" type="password" required autocomplete="current-password" /></label><label class="field"><span>新密码</span><input v-model="passwordForm.new_password" type="password" minlength="8" required autocomplete="new-password" /></label><label class="field"><span>确认新密码</span><input v-model="passwordForm.confirm" type="password" minlength="8" required autocomplete="new-password" /></label></div><button class="primary-button" :disabled="savingPassword">{{ savingPassword ? '提交中…' : '修改密码' }}</button></form>
-            <div class="logout-row"><div><strong>退出当前账号</strong><span>本地令牌将被清除，服务端令牌按原过期时间失效。</span></div><button type="button" class="icon-text-button secondary" :disabled="signingOut" @click="signOut"><LogOut :size="16" />退出登录</button></div>
-          </template>
+      <nav class="settings-anchor-nav" aria-label="设置分区">
+        <RouterLink v-for="item in sections" :key="item.key" :to="`/settings#${item.key}`" :class="{ active: activeSection === item.key }">
+          <component :is="item.icon" :size="16" />{{ item.label }}
+        </RouterLink>
+      </nav>
+
+      <div class="settings-main" :class="`section-${activeSection}`">
+        <div v-if="accountError && (activeSection === 'account' || activeSection === 'users')" class="alert-bar settings-message is-error" role="alert"><AlertCircle :size="16" />{{ accountError }}</div>
+        <div v-if="accountSuccess && (activeSection === 'account' || activeSection === 'appearance' || activeSection === 'users')" class="alert-bar ok settings-message"><CheckCircle2 :size="16" />{{ accountSuccess }}</div>
+
+        <section v-show="activeSection === 'account'" id="account" class="stack">
+          <AppCard title="账户信息" subtitle="当前登录账号">
+            <div v-if="loading" class="empty-hint"><span class="spinner dark"></span>正在加载账户信息…</div>
+            <div v-else-if="user" class="profile">
+              <span class="profile-avatar">{{ user.username.slice(0, 1).toUpperCase() }}</span>
+              <div class="profile-main"><strong>{{ user.display_name || user.username }}</strong><span class="tag primary">{{ roleLabel(user.role) }}</span></div>
+              <dl class="profile-facts">
+                <div><dt>用户名</dt><dd>{{ user.username }}</dd></div>
+                <div><dt>显示名称</dt><dd>{{ user.display_name || '未设置' }}</dd></div>
+                <div><dt>最后登录</dt><dd class="num">{{ user.last_login_at ? formatDateTime(user.last_login_at) : '暂无记录' }}</dd></div>
+              </dl>
+            </div>
+          </AppCard>
+          <AppCard v-if="user" title="修改密码" subtitle="修改成功后需要重新登录">
+            <form class="settings-form" @submit.prevent="submitPassword">
+              <div class="form-row three">
+                <label class="ui-field"><span>当前密码</span><input v-model="passwordForm.current_password" class="ui-input" type="password" required autocomplete="current-password" /></label>
+                <label class="ui-field"><span>新密码<small>至少 8 位</small></span><input v-model="passwordForm.new_password" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
+                <label class="ui-field"><span>确认新密码</span><input v-model="passwordForm.confirm" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
+              </div>
+              <button class="btn primary" :disabled="savingPassword"><KeyRound :size="15" />{{ savingPassword ? '提交中…' : '修改密码' }}</button>
+            </form>
+          </AppCard>
+          <AppCard v-if="user" title="退出登录">
+            <div class="logout-row">
+              <p>本地令牌将被清除，服务端令牌按原过期时间失效。</p>
+              <button type="button" class="btn" :disabled="signingOut" @click="signOut"><LogOut :size="15" />退出登录</button>
+            </div>
+          </AppCard>
         </section>
 
-        <section id="appearance" class="settings-section"><div class="section-heading"><div><h2>界面偏好</h2><p>仅保存在当前浏览器</p></div></div><div class="preference-grid"><label class="field"><span>主题</span><select v-model="preferences.theme"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label class="field"><span>列表密度</span><select v-model="preferences.density"><option value="standard">标准</option><option value="compact">紧凑</option></select></label></div><button type="button" class="primary-button" @click="savePreferences">保存界面偏好</button></section>
+        <AppCard v-show="activeSection === 'appearance'" id="appearance" title="界面偏好" subtitle="只保存在当前浏览器">
+          <div class="form-row two">
+            <label class="ui-field"><span>主题</span><select v-model="preferences.theme" class="ui-input"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+            <label class="ui-field"><span>列表密度</span><select v-model="preferences.density" class="ui-input"><option value="standard">标准</option><option value="compact">紧凑</option></select></label>
+          </div>
+          <button type="button" class="btn primary" @click="savePreferences">保存界面偏好</button>
+        </AppCard>
 
-        <section v-if="user?.role === 'admin'" id="users" class="settings-section"><div class="section-heading"><div><h2>创建系统账号</h2><p>仅允许创建审核员或操作员，不开放公共注册</p></div><Plus :size="19" /></div><form class="settings-form user-create-form" @submit.prevent="submitUser"><div class="settings-form-grid"><label class="field"><span>用户名</span><input v-model="userForm.username" minlength="3" maxlength="64" pattern="[A-Za-z0-9_.-]+" required /></label><label class="field"><span>显示名称</span><input v-model="userForm.display_name" maxlength="100" /></label><label class="field"><span>初始密码</span><input v-model="userForm.password" type="password" minlength="8" required /></label><label class="field"><span>角色</span><select v-model="userForm.role"><option value="reviewer">审核员</option><option value="operator">操作员</option></select></label></div><button class="primary-button" :disabled="creatingUser">{{ creatingUser ? '创建中…' : '创建账号' }}</button></form></section>
+        <AppCard v-if="user?.role === 'admin'" v-show="activeSection === 'users'" id="users" title="创建系统账号" subtitle="只能创建审核员或操作员，不开放公共注册">
+          <form class="settings-form user-create-form" @submit.prevent="submitUser">
+            <div class="form-row two">
+              <label class="ui-field"><span>用户名<small>字母、数字、_ . -</small></span><input v-model="userForm.username" class="ui-input" minlength="3" maxlength="64" pattern="[A-Za-z0-9_.-]+" required /></label>
+              <label class="ui-field"><span>显示名称<small>选填</small></span><input v-model="userForm.display_name" class="ui-input" maxlength="100" /></label>
+              <label class="ui-field"><span>初始密码<small>至少 8 位</small></span><input v-model="userForm.password" class="ui-input" type="password" minlength="8" required /></label>
+              <label class="ui-field"><span>角色</span><select v-model="userForm.role" class="ui-input"><option value="reviewer">审核员</option><option value="operator">操作员</option></select></label>
+            </div>
+            <button class="btn primary" :disabled="creatingUser"><UserPlus :size="15" />{{ creatingUser ? '创建中…' : '创建账号' }}</button>
+          </form>
+        </AppCard>
 
-        <section id="models" class="settings-section settings-model-section"><div class="section-heading settings-section-title"><div><h2>模型版本与配置</h2><p>核对登记信息并切换可用版本</p></div></div><ModelConfigurationView embedded /></section>
+        <AppCard v-show="activeSection === 'models'" id="models" title="模型版本与配置" subtitle="核对当前进程实际加载的模型登记信息">
+          <ModelConfigurationView embedded />
+        </AppCard>
 
-        <section id="evaluations" class="settings-section"><div class="section-heading"><div><h2>模型评估历史</h2><p>只读展示已保存的历史报告</p></div><button class="primary-button" disabled title="真实评估流程尚未通过部署验证">发起评估</button></div><div v-if="evaluationError" class="alert error" role="alert">{{ evaluationError }}</div><div v-else-if="!evaluations.length" class="settings-empty">没有可验证的历史评估记录</div><div v-else class="evaluation-layout"><div class="evaluation-list"><button v-for="item in evaluations" :key="item.report_id" type="button" :class="{ selected: selectedEvaluation?.report_id === item.report_id }" @click="selectEvaluation(item)"><strong>{{ item.dataset_name }}</strong><span>{{ item.dataset_split }} · {{ item.sample_count }} 条</span><small>{{ new Date(item.created_at).toLocaleDateString('zh-CN') }}</small></button></div><div v-if="selectedEvaluation" class="evaluation-detail"><div class="metric-grid"><div v-for="([label, value]) in metrics" :key="label"><span>{{ label }}</span><strong>{{ metric(value) }}</strong></div></div><div class="matrix-section"><h3>混淆矩阵</h3><div v-if="matrix" class="matrix-wrap"><table><thead><tr><th>实际 / 预测</th><th v-for="label in matrix.labels" :key="label">{{ label }}</th></tr></thead><tbody><tr v-for="(row, rowIndex) in matrix.values" :key="rowIndex"><th>{{ matrix.labels[rowIndex] }}</th><td v-for="(value, columnIndex) in row" :key="columnIndex">{{ value }}</td></tr></tbody></table></div><p v-else>当前混淆矩阵结构无法展示。</p></div></div></div><div class="evaluation-boundary">测试集不得参与训练、模型选择、阈值选择或调参。真实评估流程可验证前，禁止从页面发起评估。</div></section>
-      </main>
+        <AppCard v-show="activeSection === 'evaluations'" id="evaluations" title="模型评估历史" subtitle="只读展示已保存的历史评估报告">
+          <template #extra><button class="btn small" disabled title="真实评估流程尚未通过部署验证">发起评估</button></template>
+          <div v-if="evaluationError" class="alert-bar" role="alert"><AlertCircle :size="16" />{{ evaluationError }}</div>
+          <div v-else-if="!evaluations.length" class="empty-hint">没有可验证的历史评估记录</div>
+          <div v-else class="evaluation-layout">
+            <div class="evaluation-list">
+              <button v-for="item in evaluations" :key="item.report_id" type="button" :class="{ selected: selectedEvaluation?.report_id === item.report_id }" @click="selectEvaluation(item)">
+                <strong>{{ item.dataset_name }}</strong>
+                <span class="num">{{ splitLabels[item.dataset_split] ?? item.dataset_split }} · {{ item.sample_count }} 条</span>
+                <small class="num">{{ formatDateTime(item.created_at) }}</small>
+              </button>
+            </div>
+            <div v-if="selectedEvaluation" class="evaluation-detail">
+              <div class="metric-grid">
+                <div v-for="([label, value]) in metrics" :key="label" :class="{ empty: value === null }"><span>{{ label }}</span><strong class="num">{{ metric(value) }}</strong></div>
+              </div>
+              <h4>混淆矩阵</h4>
+              <div v-if="matrix" class="matrix-wrap">
+                <table>
+                  <thead><tr><th>实际 \ 预测</th><th v-for="label in matrix.labels" :key="label">{{ matrixLabel(label) }}</th></tr></thead>
+                  <tbody><tr v-for="(row, rowIndex) in matrix.values" :key="rowIndex"><th>{{ matrixLabel(matrix.labels[rowIndex]) }}</th><td v-for="(value, columnIndex) in row" :key="columnIndex" class="num" :style="cellStyle(value)">{{ value }}</td></tr></tbody>
+                </table>
+              </div>
+              <p v-else class="hint">当前混淆矩阵结构无法展示。</p>
+            </div>
+          </div>
+          <p class="evaluation-boundary"><AlertCircle :size="14" />测试集不得参与训练、模型选择、阈值选择或调参。真实评估流程可验证前，禁止从页面发起评估。</p>
+        </AppCard>
+      </div>
     </div>
   </section>
 </template>
+
+<style scoped>
+.settings-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); align-items: start; gap: 16px; }
+.settings-anchor-nav { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.settings-anchor-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 9px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; }
+.settings-anchor-nav a:hover { background: var(--color-surface-muted); }
+.settings-anchor-nav a.active { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 600; }
+.settings-anchor-nav a.active svg { color: var(--color-behavior); }
+.settings-main { min-width: 0; }
+
+.profile { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; }
+.profile-avatar { display: grid; grid-row: span 2; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 20px; font-weight: 700; }
+.profile-main { display: flex; align-items: center; gap: 10px; }
+.profile-main strong { font-size: 17px; }
+.profile-facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0; font-size: 13px; }
+.profile-facts dt { display: inline; color: var(--color-text-muted); }
+.profile-facts dt::after { content: "："; }
+.profile-facts dd { display: inline; margin: 0; }
+.settings-form { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.form-row { display: grid; width: 100%; gap: 14px 16px; }
+.form-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#appearance .form-row { margin-bottom: 14px; }
+.logout-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.logout-row p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+
+.evaluation-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; }
+.evaluation-list { display: flex; flex-direction: column; gap: 8px; }
+.evaluation-list button { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
+.evaluation-list button:hover { border-color: var(--color-primary); }
+.evaluation-list button.selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.evaluation-list strong { font-size: 13px; }
+.evaluation-list span, .evaluation-list small { color: var(--color-text-muted); font-size: 12px; }
+.metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.metric-grid div { padding: 12px; border-radius: 10px; background: var(--color-primary-soft); }
+.metric-grid div.empty { background: var(--color-surface-muted); }
+.metric-grid span { display: block; color: var(--color-text-muted); font-size: 12px; }
+.metric-grid strong { display: block; margin-top: 4px; color: var(--color-primary); font-size: 20px; }
+.metric-grid .empty strong { color: var(--color-text-muted); font-size: 14px; }
+h4 { margin: 0 0 10px; font-size: 14px; }
+.matrix-wrap { overflow-x: auto; }
+.matrix-wrap table { border-collapse: separate; border-spacing: 4px; font-size: 13px; }
+.matrix-wrap th { padding: 6px 10px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; text-align: center; white-space: nowrap; }
+.matrix-wrap tbody th { text-align: right; }
+.matrix-wrap td { min-width: 74px; padding: 12px; border-radius: 8px; font-weight: 600; text-align: center; }
+.evaluation-boundary { display: flex; align-items: center; gap: 6px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--color-line); color: var(--color-warn); font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .evaluation-layout { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-anchor-nav { position: static; flex-direction: row; overflow-x: auto; }
+  .form-row.two, .form-row.three { grid-template-columns: 1fr; }
+}
+</style>

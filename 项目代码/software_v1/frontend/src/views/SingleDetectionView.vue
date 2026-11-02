@@ -224,9 +224,9 @@ async function submit() {
 .pipeline ol::before { position: absolute; top: 14px; bottom: 14px; left: 13px; width: 2px; background: var(--color-line); content: ""; }
 .pipeline li { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 0; font-size: 13px; }
 .pipeline li b { z-index: 1; display: grid; flex: none; width: 28px; height: 28px; place-items: center; border: 2px solid var(--color-surface); border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary); font-size: 12px; }
-.pipeline li:nth-child(2) b { background: var(--color-primary); color: #fff; }
+.pipeline li:nth-child(2) b { background: var(--color-primary); color: var(--color-on-primary); }
 .pipeline li:nth-child(3) b { background: var(--color-behavior); color: #fff; }
-.pipeline li:last-child b { background: var(--color-accent); color: var(--color-primary); }
+.pipeline li:last-child b { background: var(--color-accent); color: var(--color-on-accent); }
 .verdict-tags { display: flex; justify-content: center; gap: 8px; margin: 6px 0 14px; }
 .result-fields { display: grid; grid-template-columns: 1fr 1fr; margin: 0; overflow: hidden; border: 1px solid var(--color-line); border-radius: 10px; }
 .result-fields div { padding: 9px 12px; border-bottom: 1px solid var(--color-line); }

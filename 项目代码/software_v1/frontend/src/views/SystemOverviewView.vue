@@ -157,7 +157,7 @@ onMounted(loadOverview);
 .stat-label { color: var(--color-text-secondary); font-size: 13px; }
 .stat strong { grid-column: span 2; margin-top: 10px; font-size: 32px; line-height: 1.1; }
 .stat small { grid-column: span 2; margin-top: 4px; color: var(--color-text-muted); font-size: 12px; }
-.stat.brand { background: var(--color-primary); color: #fff; }
+.stat.brand { background: var(--color-brand-deep); color: #fff; }
 .stat.brand .stat-icon { background: rgb(255 255 255 / 12%); color: var(--color-accent); }
 .stat.brand .stat-label, .stat.brand small { color: rgb(255 255 255 / 72%); }
 
@@ -183,7 +183,7 @@ onMounted(loadOverview);
 .quick { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--color-line); border-radius: 10px; color: inherit; text-decoration: none; }
 .quick + .quick { margin-top: 10px; }
 .quick:hover { border-color: var(--color-primary); }
-.quick-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 10px; background: var(--color-primary); color: var(--color-accent); }
+.quick-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 10px; background: var(--color-brand-deep); color: var(--color-accent); }
 .quick-icon.behavior { background: var(--color-behavior); color: #fff; }
 .quick strong { display: block; font-size: 14px; }
 .quick small { color: var(--color-text-muted); font-size: 12px; }
@@ -193,7 +193,7 @@ onMounted(loadOverview);
 .runtime dt { color: var(--color-text-muted); }
 .runtime dd { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot.ok { background: var(--color-accent); box-shadow: 0 0 0 1.5px var(--color-primary); }
+.dot.ok { background: var(--color-accent); box-shadow: 0 0 0 1.5px var(--color-brand-deep); }
 .dot.warn { background: var(--color-warn); }
 .dot.fake { background: var(--color-fake); }
 

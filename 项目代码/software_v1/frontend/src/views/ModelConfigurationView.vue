@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { AlertCircle, Cpu, RefreshCw, ShieldCheck } from 'lucide-vue-next';
 import { ApiError, getModelVersions } from '../api/client';
 import type { ModelVersionResponse } from '../types';
+import { formatDateTime } from '../labels';
 defineProps<{ embedded?: boolean }>();
 
 const models = ref<ModelVersionResponse[]>([]);
@@ -11,6 +12,17 @@ const loading = ref(true);
 const errorMessage = ref('');
 const selected = computed(() => models.value.find((item) => item.version === selectedVersion.value) ?? models.value[0]);
 const configEntries = computed(() => Object.entries(selected.value?.config ?? {}));
+
+// 模型配置项的中文说明；键名照原样保留，便于和 base.json 对照
+const CONFIG_LABELS: Record<string, string> = {
+  albert_name_or_path: '预训练语义模型', max_length: '最大文本长度', semantic_num_labels: '语义类别数', behavior_num_labels: '行为类别数',
+  behavior_type_num_labels: '异常行为细类数', behavior_input_size: '行为特征维度', behavior_hidden_size: 'GRU 隐层大小', behavior_num_layers: 'GRU 层数',
+  behavior_dropout: '行为分支丢弃率', fusion_hidden_size: '融合隐层大小', fusion_dropout: '融合层丢弃率', classifier_dropout: '分类头丢弃率',
+  use_behavior_attention: '行为注意力', real_exit_threshold: '真实提前退出阈值', semantic_exit_threshold: '语义提前退出阈值',
+  behavior_trigger_threshold: '行为触发阈值', uncertainty_entropy_threshold: '不确定性熵阈值', authenticity_threshold: '真实性判定阈值',
+  allow_type_override: '允许类型覆盖', minimum_history: '最少历史条数', maximum_history: '最多历史条数',
+  semantic_labels: '语义标签顺序', behavior_labels: '行为标签顺序',
+};
 
 function displayValue(value: unknown) {
   if (Array.isArray(value)) return value.join(' → ');
@@ -33,28 +45,95 @@ onMounted(loadModels);
 </script>
 
 <template>
-  <section :class="embedded ? 'settings-embedded-models' : 'page-content models-page'">
-    <header v-if="!embedded" class="page-heading"><div><span class="eyebrow">模型管理</span><h1>模型版本与配置</h1><p>只读核对当前进程实际加载的模型登记信息</p></div><span class="api-state"><span></span>配置来源：模型清单</span></header>
-    <div v-if="errorMessage" class="alert error models-alert" role="alert"><AlertCircle :size="17" /><span>{{ errorMessage }}</span><button type="button" @click="loadModels"><RefreshCw :size="15" />重新加载</button></div>
+  <section class="model-config" :class="{ standalone: !embedded }">
+    <div v-if="errorMessage" class="alert-bar" role="alert">
+      <AlertCircle :size="16" />{{ errorMessage }}
+      <button type="button" class="btn small retry" @click="loadModels"><RefreshCw :size="14" />重新加载</button>
+    </div>
 
     <div class="models-layout">
-      <section class="models-list-panel">
-        <div class="section-heading"><div><h2>已登记版本</h2><p>共 {{ models.length }} 个版本</p></div></div>
-        <div v-if="loading" class="models-state"><span class="spinner dark"></span>正在加载模型版本…</div>
-        <div v-else-if="!models.length" class="models-state">尚未登记模型版本</div>
-        <button v-for="model in models" v-else :key="model.version" type="button" class="model-version-row" :class="{ selected: selected?.version === model.version }" @click="selectedVersion = model.version">
-          <span class="model-icon"><Cpu :size="18" /></span><span><strong>{{ model.version }}</strong><small>{{ model.model_name }}</small></span><em v-if="model.is_active">当前使用</em>
+      <div class="version-list">
+        <p class="list-title">已登记版本 <span class="num">{{ models.length }}</span></p>
+        <div v-if="loading" class="empty-hint"><span class="spinner dark"></span>正在加载模型版本…</div>
+        <div v-else-if="!models.length" class="empty-hint">尚未登记模型版本</div>
+        <button
+          v-for="model in models" v-else :key="model.version" type="button"
+          class="model-version-row" :class="{ selected: selected?.version === model.version }" @click="selectedVersion = model.version"
+        >
+          <span class="model-icon"><Cpu :size="17" /></span>
+          <span class="version-text"><strong class="num">{{ model.version }}</strong><small>{{ model.model_name }}</small></span>
+          <span v-if="model.is_active" class="tag ok">当前使用</span>
         </button>
-      </section>
+      </div>
 
-      <main v-if="selected" class="model-detail-panel">
-        <div class="model-detail-head"><div><span class="eyebrow">版本详情</span><h2>{{ selected.version }}</h2><p>{{ selected.model_name }}</p></div><button type="button" class="primary-button" disabled>{{ selected.is_active ? '当前使用' : '需重启切换' }}</button></div>
-        <dl class="model-identity"><div><dt>Tokenizer</dt><dd>{{ selected.tokenizer_name }}</dd></div><div><dt>登记时间</dt><dd>{{ new Date(selected.created_at).toLocaleString('zh-CN') }}</dd></div><div class="span-2"><dt>检查点 SHA-256</dt><dd class="mono">{{ selected.checkpoint_sha256 }}</dd></div></dl>
+      <div v-if="selected" class="model-detail">
+        <div class="model-detail-head">
+          <div><span class="hint">版本详情</span><h3 class="num">{{ selected.version }}</h3><p>{{ selected.model_name }}</p></div>
+          <button type="button" class="btn" disabled>{{ selected.is_active ? '当前使用' : '需重启切换' }}</button>
+        </div>
+        <dl class="identity">
+          <div><dt>分词器</dt><dd>{{ selected.tokenizer_name }}</dd></div>
+          <div><dt>登记时间</dt><dd class="num">{{ formatDateTime(selected.created_at) }}</dd></div>
+          <div class="wide"><dt>检查点 SHA-256</dt><dd class="mono">{{ selected.checkpoint_sha256 }}</dd></div>
+        </dl>
 
-        <section class="model-subsection"><div class="section-heading"><div><h2>运行配置</h2><p>由后端模型登记信息返回，页面只读展示</p></div></div><dl class="config-grid"><div v-for="([key, value]) in configEntries" :key="key"><dt class="mono">{{ key }}</dt><dd>{{ displayValue(value) }}</dd></div></dl></section>
-        <section class="model-subsection metrics-state"><ShieldCheck :size="21" /><div><h2>评估指标</h2><template v-if="selected.metrics"><dl><div v-for="(value, key) in selected.metrics" :key="key"><dt>{{ key }}</dt><dd>{{ value }}</dd></div></dl></template><p v-else>当前版本没有可验证的历史指标快照。页面不会生成或补造准确率、F1、AUC 等指标。</p></div></section>
-        <div class="model-boundary"><AlertCircle :size="17" /><p>V1.0 不支持在线热切换。更换模型后必须更新并校验模型清单，再重启后端和GPU Worker。</p></div>
-      </main>
+        <h4>运行配置<span class="hint">由后端模型登记信息返回，只读展示</span></h4>
+        <dl class="config-grid">
+          <div v-for="([key, value]) in configEntries" :key="key">
+            <dt>{{ CONFIG_LABELS[key] ?? key }}<code>{{ key }}</code></dt>
+            <dd>{{ displayValue(value) }}</dd>
+          </div>
+        </dl>
+
+        <div class="metrics-state">
+          <ShieldCheck :size="20" />
+          <div>
+            <h4>评估指标</h4>
+            <dl v-if="selected.metrics" class="metric-pairs"><div v-for="(value, key) in selected.metrics" :key="key"><dt>{{ key }}</dt><dd>{{ value }}</dd></div></dl>
+            <p v-else>当前版本没有可验证的历史指标快照。页面不会生成或补造准确率、F1、AUC 等指标。</p>
+          </div>
+        </div>
+        <p class="model-boundary"><AlertCircle :size="15" />V1.0 不支持在线热切换。更换模型后必须更新并校验模型清单，再重启后端和 GPU Worker。</p>
+      </div>
     </div>
   </section>
 </template>
+
+<style scoped>
+.model-config.standalone { padding: 22px 28px; }
+.retry { margin-left: auto; }
+.models-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; }
+.list-title { margin: 0 0 8px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.version-list { display: flex; flex-direction: column; gap: 8px; }
+.model-version-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
+.model-version-row:hover { border-color: var(--color-primary); }
+.model-version-row.selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.model-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px; background: var(--color-brand-deep); color: var(--color-accent); }
+.version-text { min-width: 0; }
+.version-text strong { display: block; font-size: 13px; }
+.version-text small { display: block; overflow: hidden; color: var(--color-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.model-detail { min-width: 0; }
+.model-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--color-line); }
+.model-detail-head h3 { margin: 2px 0 0; font-size: 18px; }
+.model-detail-head p { margin: 2px 0 0; color: var(--color-text-secondary); font-size: 13px; }
+.identity { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin: 14px 0 18px; font-size: 13px; }
+.identity .wide { grid-column: span 2; }
+.identity dt { color: var(--color-text-muted); font-size: 12px; }
+.identity dd { margin: 2px 0 0; word-break: break-all; }
+.mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+h4 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 14px; }
+.config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 0 0 18px; }
+.config-grid div { padding: 8px 12px; border-radius: 8px; background: var(--color-surface-muted); }
+.config-grid dt { display: flex; flex-direction: column; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.config-grid code { color: var(--color-text-muted); font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; font-weight: 400; }
+.config-grid dd { margin: 4px 0 0; font-size: 13px; font-weight: 600; word-break: break-word; }
+.metrics-state { display: flex; gap: 12px; padding: 14px; border-radius: 10px; background: var(--color-primary-soft); color: var(--color-primary); }
+.metrics-state p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+.metric-pairs { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; font-size: 13px; }
+.metric-pairs dd { margin: 0; font-weight: 600; }
+.model-boundary { display: flex; align-items: center; gap: 6px; margin: 14px 0 0; color: var(--color-warn); font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .models-layout { grid-template-columns: 1fr; }
+}
+</style>
