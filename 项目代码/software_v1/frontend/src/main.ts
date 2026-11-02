@@ -3,6 +3,7 @@ import App from './App.vue';
 import { router } from './router';
 import './styles.css';
 import './styles/tokens.css';
+import './styles/ui.css';
 import { applyPreferences, getPreferences } from './preferences';
 
 function bootstrap() {

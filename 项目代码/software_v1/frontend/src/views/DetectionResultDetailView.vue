@@ -96,7 +96,7 @@ watch(() => route.params.resultId, loadResult);
 </script>
 
 <template>
-  <section class="detail-page">
+  <section class="page detail-page">
     <nav class="crumb" aria-label="面包屑"><RouterLink to="/results">检测记录</RouterLink> / <b>结果详情</b></nav>
     <header class="page-title">
       <h1>检测结果分析</h1>
@@ -120,7 +120,7 @@ watch(() => route.params.resultId, loadResult);
 
       <div class="row-hero">
         <AppCard title="融合判定" subtitle="融合真实性头输出" class="verdict-card">
-          <GaugeChart :value="fakeProbability" :threshold="explanation?.final.threshold ?? 0.5" :tone="result.authenticity" label="融合虚假概率" />
+          <GaugeChart :value="fakeProbability" :threshold="explanation?.final.threshold" :tone="result.authenticity" label="融合虚假概率" />
           <div class="tag-row">
             <span class="tag" :class="result.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[result.authenticity] }}</span>
             <span class="tag" :class="actionTone[result.action]">建议{{ actionLabels[result.action] }}</span>
@@ -246,32 +246,6 @@ watch(() => route.params.resultId, loadResult);
 </template>
 
 <style scoped>
-.detail-page { max-width: 1280px; padding: 22px 28px 40px; }
-.crumb { color: var(--color-text-muted); font-size: 13px; }
-.crumb a { color: inherit; text-decoration: none; }
-.crumb a:hover { color: var(--color-primary); }
-.crumb b { color: var(--color-text); font-weight: 500; }
-.page-title { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
-.page-title h1 { margin: 0; font-size: 21px; }
-.page-id { color: var(--color-text-muted); font-size: 13px; }
-.page-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--color-line); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 14px; line-height: 20px; text-decoration: none; }
-.btn:hover:not(:disabled) { border-color: var(--color-primary); }
-.btn.primary { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
-.btn.primary:hover:not(:disabled) { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-primary); }
-
-.state-card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); color: var(--color-text-secondary); }
-.state-card.error { color: var(--color-fake); }
-.alert-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 14px; border-radius: var(--radius-control); background: var(--color-fake-soft); color: var(--color-fake); font-size: 13px; }
-
-.tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-.tag.fake { background: var(--color-fake-soft); color: var(--color-fake); }
-.tag.warn { background: var(--color-warn-soft); color: var(--color-warn); }
-.tag.ok { background: var(--color-accent); color: var(--color-primary); }
-.tag.primary { background: var(--color-primary-soft); color: var(--color-primary); }
-.tag.behavior { background: var(--color-behavior-soft); color: color-mix(in srgb, var(--color-behavior) 80%, #000); }
-
 .row-hero { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
 .verdict-card { text-align: center; }
 .verdict-card :deep(.card-head), .verdict-card :deep(.card-sub) { text-align: left; }
@@ -357,7 +331,6 @@ watch(() => route.params.resultId, loadResult);
   .fusion-card { grid-column: span 2; }
 }
 @media (max-width: 860px) {
-  .detail-page { padding: 18px 14px 32px; }
   .row-hero, .row-foot, .row-evidence { grid-template-columns: 1fr; }
   .fusion-card { grid-column: auto; }
   .flow { grid-template-columns: 1fr; gap: 12px; }

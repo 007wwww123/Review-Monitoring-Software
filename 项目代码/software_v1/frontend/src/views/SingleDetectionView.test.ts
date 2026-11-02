@@ -5,14 +5,14 @@ import { server } from '../mocks/server';
 import SingleDetectionView from './SingleDetectionView.vue';
 
 function fields(wrapper: VueWrapper) {
-  const inputs = wrapper.findAll('.form-grid input');
+  const inputs = wrapper.findAll('.fields-grid input');
   return {
     reviewId: inputs[0],
     userId: inputs[1],
     productId: inputs[2],
     rating: inputs[3],
     date: inputs[4],
-    text: wrapper.find('.form-grid textarea'),
+    text: wrapper.find('.fields-grid textarea'),
   };
 }
 
@@ -42,7 +42,7 @@ describe('SingleDetectionView', () => {
     const wrapper = mount(SingleDetectionView);
     await fillValidForm(wrapper);
     await wrapper.get('[data-testid="add-history"]').trigger('click');
-    const historyInputs = wrapper.findAll('.history-base input');
+    const historyInputs = wrapper.findAll('.history-fields input');
     await historyInputs[1].setValue('historical-product');
     await historyInputs[3].setValue('2026-08-11T10:00');
     await wrapper.get('[data-testid="submit"]').trigger('submit');
@@ -76,7 +76,7 @@ describe('SingleDetectionView', () => {
     const wrapper = mount(SingleDetectionView);
     await fillValidForm(wrapper);
     await wrapper.get('[data-testid="add-history"]').trigger('click');
-    const historyInputs = wrapper.findAll('.history-base input');
+    const historyInputs = wrapper.findAll('.history-fields input');
     await historyInputs[1].setValue('historical-product');
     await historyInputs[3].setValue('2026-08-10T10:00');
     await wrapper.get('[data-testid="submit"]').trigger('submit');
