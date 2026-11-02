@@ -129,7 +129,7 @@ onMounted(loadRecords);
                 <strong class="num">{{ item.review_id || `结果 #${item.result_id}` }}</strong>
                 <p :title="item.text_excerpt">{{ item.text_excerpt }}</p>
               </td>
-              <td class="muted num"><span :title="item.user_key">{{ shortId(item.user_key, 4) }}</span><br />{{ item.product_id }}</td>
+              <td class="muted num user-cell"><span :title="item.user_key">{{ shortId(item.user_key, 4) }}</span><br />{{ item.product_id }}</td>
               <td class="prob-cell">
                 <span class="tag auth-tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
                 <span class="prob" :class="item.authenticity"><i :style="{ width: percent(fakeProbability(item)) }"></i></span>
@@ -190,7 +190,7 @@ onMounted(loadRecords);
 .type-cell span { display: block; font-weight: 500; }
 .type-cell small { color: var(--color-text-muted); font-size: 12px; }
 .type-cell small.warn { color: var(--color-warn); }
-.time-cell { white-space: nowrap; }
+.time-cell, .user-cell { white-space: nowrap; }
 .op-cell { text-align: right; }
 .retry { margin-left: auto; }
 .table-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 13px; }
