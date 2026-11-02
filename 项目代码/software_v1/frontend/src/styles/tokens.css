@@ -1,0 +1,37 @@
+/* 设计变量：颜色、圆角、阴影。新组件一律从这里取值，不写死颜色。 */
+:root {
+  /* 品牌与数据通道 */
+  --color-primary: #1c2257;   /* 墨藏青：主色、语义流 */
+  --color-behavior: #ff6b4a;  /* 珊瑚：行为流 */
+  --color-fake: #c81d55;      /* 宝石红：疑似虚假 */
+  --color-warn: #c08a12;      /* 金：人工复核、未校准 */
+  --color-accent: #c8f03c;    /* 酸性黄绿：小面积点睛（正常、可用、选中） */
+
+  /* 浅色底，由主色派生 */
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, #fff);
+  --color-behavior-soft: color-mix(in srgb, var(--color-behavior) 10%, #fff);
+  --color-fake-soft: color-mix(in srgb, var(--color-fake) 8%, #fff);
+  --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, #fff);
+
+  /* 中性色 */
+  --color-bg: #f3f4f8;
+  --color-surface: #fff;
+  --color-surface-muted: #f7f8fb;
+  --color-sidebar: #eceef6;
+  --color-line: #e5e7ef;
+  --color-text: #161a33;
+  --color-text-secondary: #475069;
+  --color-text-muted: #6c7189;
+  --color-track: #eef0f5;
+
+  --radius-card: 12px;
+  --radius-control: 9px;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 5%);
+  --font-sans: "PingFang SC", "Microsoft YaHei", Inter, Arial, sans-serif;
+
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+}
+
+.num { font-variant-numeric: tabular-nums; }

@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import { router } from './router';
 import './styles.css';
+import './styles/tokens.css';
 import { applyPreferences, getPreferences } from './preferences';
 
 function bootstrap() {

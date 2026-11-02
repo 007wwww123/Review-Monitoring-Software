@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../mocks/server';
 import DetectionResultDetailView from './DetectionResultDetailView.vue';
 
-async function mountDetail(resultId = 3001, page: 'summary' | 'evidence' = 'summary') {
+async function mountDetail(resultId = 3001) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -13,7 +13,7 @@ async function mountDetail(resultId = 3001, page: 'summary' | 'evidence' = 'summ
       { path: '/results/:resultId', component: DetectionResultDetailView },
     ],
   });
-  await router.push(`/results/${resultId}?page=${page}`);
+  await router.push(`/results/${resultId}`);
   await router.isReady();
   const wrapper = mount(DetectionResultDetailView, { global: { plugins: [router] } });
   await flushPromises();
@@ -36,26 +36,28 @@ describe('DetectionResultDetailView', () => {
   });
 
   it('renders fixed semantic and behavior label order with insufficient evidence', async () => {
-    const wrapper = await mountDetail(3001, 'evidence');
-    expect(wrapper.findAll('.semantic-scores .score-row').map((row) => row.text())).toEqual([
-      '真实语义82%', '误导性8%', '夸张性6%', '广告性4%',
+    const wrapper = await mountDetail(3001);
+    expect(wrapper.findAll('.radar .label').map((label) => label.text())).toEqual([
+      '真实语义82.0%', '误导性8.0%', '夸张性6.0%', '广告性4.0%',
     ]);
-    expect(wrapper.findAll('.behavior-scores .score-row').map((row) => row.text())).toEqual([
-      '行为正常0%', '评论操纵0%', '群体操纵0%', '机器行为0%', '行为证据不足100%',
+    expect(wrapper.findAll('.behavior-card .score-row').map((row) => row.text())).toEqual([
+      '行为正常0.0%', '评论操纵0.0%', '群体操纵0.0%', '机器行为0.0%', '行为证据不足100.0%',
     ]);
     expect(wrapper.text()).toContain('该状态不能解释为用户行为正常');
-    expect(wrapper.findAll('.disclaimer-section li')).toHaveLength(4);
+    expect(wrapper.get('.node.behavior').text()).toContain('证据不足');
+    expect(wrapper.findAll('.limitations li')).toHaveLength(4);
   });
 
   it('does not invent evidence when Explanation is absent', async () => {
-    const wrapper = await mountDetail(3005, 'evidence');
+    const wrapper = await mountDetail(3005);
     expect(wrapper.text()).toContain('解释数据不可用');
-    expect(wrapper.find('.semantic-scores').exists()).toBe(false);
+    expect(wrapper.find('.radar').exists()).toBe(false);
+    expect(wrapper.find('.flow-card').exists()).toBe(false);
   });
 
   it('creates a task report and downloads JSON and CSV', async () => {
     const wrapper = await mountDetail();
-    await wrapper.get('.report-create button').trigger('click');
+    await wrapper.get('.report-create').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('报告已生成');
     const buttons = wrapper.findAll('.report-downloads button');
@@ -85,28 +87,18 @@ describe('DetectionResultDetailView', () => {
   it('keeps result content visible when report generation fails', async () => {
     server.use(http.post('/api/v1/reports', () => HttpResponse.json({ detail: '报告服务暂不可用' }, { status: 503 })));
     const wrapper = await mountDetail();
-    await wrapper.get('.report-create button').trigger('click');
+    await wrapper.get('.report-create').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('报告服务暂不可用');
-    expect(wrapper.text()).toContain('结果摘要');
+    expect(wrapper.text()).toContain('评论与结论');
   });
 
-  it('splits existing modules between summary and evidence pages', async () => {
+  it('shows verdict, process and evidence modules on one page', async () => {
     const wrapper = await mountDetail();
-    expect(wrapper.get('.detail-page-nav a.active').text()).toBe('结果概览');
-    expect(wrapper.get('.summary-section').isVisible()).toBe(true);
-    expect(wrapper.get('.metadata-section').isVisible()).toBe(true);
-    expect(wrapper.get('.report-section').isVisible()).toBe(true);
-    expect(wrapper.get('.disclaimer-section').isVisible()).toBe(true);
-    expect(wrapper.get('.evidence-section').isVisible()).toBe(false);
-
-    await wrapper.get('.detail-page-nav a:nth-child(2)').trigger('click');
-    await flushPromises();
-    expect(wrapper.get('.detail-page-nav a.active').text()).toBe('融合证据');
-    expect(wrapper.get('.detail-layout').classes()).toContain('detail-page-evidence');
-    expect(wrapper.findAll('.evidence-section').every((section) => section.attributes('style') !== 'display: none;')).toBe(true);
-    expect(wrapper.get('.fusion-section').attributes('style')).not.toBe('display: none;');
-    expect(wrapper.get('.summary-section').attributes('style')).toBe('display: none;');
-    expect(wrapper.get('.detail-side').attributes('style')).toBe('display: none;');
+    for (const selector of ['.verdict-card', '.summary-card', '.flow-card', '.semantic-card', '.behavior-card', '.fusion-card', '.metadata-card', '.limitations-card']) {
+      expect(wrapper.find(selector).exists()).toBe(true);
+    }
+    expect(wrapper.find('.gauge').exists()).toBe(true);
+    expect(wrapper.find('.donut').exists()).toBe(true);
   });
 });
