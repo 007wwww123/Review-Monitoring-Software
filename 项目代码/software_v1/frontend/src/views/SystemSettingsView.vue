@@ -114,34 +114,32 @@ onMounted(loadSettings);
         <div v-if="accountError && (activeSection === 'account' || activeSection === 'users')" class="alert-bar settings-message is-error" role="alert"><AlertCircle :size="16" />{{ accountError }}</div>
         <div v-if="accountSuccess && (activeSection === 'account' || activeSection === 'appearance' || activeSection === 'users')" class="alert-bar ok settings-message"><CheckCircle2 :size="16" />{{ accountSuccess }}</div>
 
-        <section v-show="activeSection === 'account'" id="account" class="stack">
-          <AppCard title="账户信息" subtitle="当前登录账号">
+        <section v-show="activeSection === 'account'" id="account" class="account-grid">
+          <AppCard title="账户信息" subtitle="当前登录账号" class="account-card">
             <div v-if="loading" class="empty-hint"><span class="spinner dark"></span>正在加载账户信息…</div>
-            <div v-else-if="user" class="profile">
-              <span class="profile-avatar">{{ user.username.slice(0, 1).toUpperCase() }}</span>
-              <div class="profile-main"><strong>{{ user.display_name || user.username }}</strong><span class="tag primary">{{ roleLabel(user.role) }}</span></div>
+            <template v-else-if="user">
+              <div class="profile">
+                <span class="profile-avatar">{{ user.username.slice(0, 1).toUpperCase() }}</span>
+                <div><strong>{{ user.display_name || user.username }}</strong><span class="tag primary">{{ roleLabel(user.role) }}</span></div>
+              </div>
               <dl class="profile-facts">
                 <div><dt>用户名</dt><dd>{{ user.username }}</dd></div>
                 <div><dt>显示名称</dt><dd>{{ user.display_name || '未设置' }}</dd></div>
                 <div><dt>最后登录</dt><dd class="num">{{ user.last_login_at ? formatDateTime(user.last_login_at) : '暂无记录' }}</dd></div>
               </dl>
-            </div>
-          </AppCard>
-          <AppCard v-if="user" title="修改密码" subtitle="修改成功后需要重新登录">
-            <form class="settings-form" @submit.prevent="submitPassword">
-              <div class="form-row three">
-                <label class="ui-field"><span>当前密码</span><input v-model="passwordForm.current_password" class="ui-input" type="password" required autocomplete="current-password" /></label>
-                <label class="ui-field"><span>新密码<small>至少 8 位</small></span><input v-model="passwordForm.new_password" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
-                <label class="ui-field"><span>确认新密码</span><input v-model="passwordForm.confirm" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
+              <div class="logout-row">
+                <p>退出后本地令牌将被清除，服务端令牌按原过期时间失效。</p>
+                <button type="button" class="btn" :disabled="signingOut" @click="signOut"><LogOut :size="15" />退出登录</button>
               </div>
+            </template>
+          </AppCard>
+          <AppCard v-if="user" title="修改密码" subtitle="修改成功后需要重新登录" class="account-card">
+            <form class="settings-form password-form" @submit.prevent="submitPassword">
+              <label class="ui-field"><span>当前密码</span><input v-model="passwordForm.current_password" class="ui-input" type="password" required autocomplete="current-password" /></label>
+              <label class="ui-field"><span>新密码<small>至少 8 位</small></span><input v-model="passwordForm.new_password" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
+              <label class="ui-field"><span>确认新密码</span><input v-model="passwordForm.confirm" class="ui-input" type="password" minlength="8" required autocomplete="new-password" /></label>
               <button class="btn primary" :disabled="savingPassword"><KeyRound :size="15" />{{ savingPassword ? '提交中…' : '修改密码' }}</button>
             </form>
-          </AppCard>
-          <AppCard v-if="user" title="退出登录">
-            <div class="logout-row">
-              <p>本地令牌将被清除，服务端令牌按原过期时间失效。</p>
-              <button type="button" class="btn" :disabled="signingOut" @click="signOut"><LogOut :size="15" />退出登录</button>
-            </div>
           </AppCard>
         </section>
 
@@ -211,21 +209,24 @@ onMounted(loadSettings);
 .settings-anchor-nav a.active svg { color: var(--color-behavior); }
 .settings-main { min-width: 0; }
 
-.profile { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; }
-.profile-avatar { display: grid; grid-row: span 2; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 20px; font-weight: 700; }
-.profile-main { display: flex; align-items: center; gap: 10px; }
-.profile-main strong { font-size: 17px; }
-.profile-facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0; font-size: 13px; }
-.profile-facts dt { display: inline; color: var(--color-text-muted); }
-.profile-facts dt::after { content: "："; }
-.profile-facts dd { display: inline; margin: 0; }
+/* 账户分区：两张卡片等高，左卡底部放退出登录 */
+.account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; }
+.account-card { display: flex; flex-direction: column; }
+.profile { display: flex; align-items: center; gap: 14px; }
+.profile-avatar { display: grid; flex: none; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 20px; font-weight: 700; }
+.profile strong { display: block; margin-bottom: 4px; font-size: 17px; }
+.profile-facts { margin: 16px 0 0; font-size: 13px; }
+.profile-facts div { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed var(--color-line); }
+.profile-facts dt { color: var(--color-text-muted); }
+.profile-facts dd { margin: 0; font-weight: 500; }
+.logout-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: auto; padding-top: 16px; }
+.logout-row p { margin: 0; color: var(--color-text-muted); font-size: 12px; }
 .settings-form { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.password-form { flex: 1; align-items: stretch; }
+.password-form .btn { align-self: flex-start; margin-top: auto; }
 .form-row { display: grid; width: 100%; gap: 14px 16px; }
 .form-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.form-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #appearance .form-row { margin-bottom: 14px; }
-.logout-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.logout-row p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
 
 .evaluation-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; }
 .evaluation-list { display: flex; flex-direction: column; gap: 8px; }
@@ -255,6 +256,6 @@ h4 { margin: 0 0 10px; font-size: 14px; }
 @media (max-width: 860px) {
   .settings-layout { grid-template-columns: 1fr; }
   .settings-anchor-nav { position: static; flex-direction: row; overflow-x: auto; }
-  .form-row.two, .form-row.three { grid-template-columns: 1fr; }
+  .form-row.two, .account-grid { grid-template-columns: 1fr; }
 }
 </style>

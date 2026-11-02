@@ -58,7 +58,7 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
     <aside class="side">
       <div class="brand">
         <AppLogo />
-        <div class="brand-text"><strong>{{ APP_NAME }}</strong><span class="version">{{ APP_VERSION }}</span></div>
+        <div class="brand-text fade"><strong>{{ APP_NAME }}</strong><span class="version">{{ APP_VERSION }}</span></div>
       </div>
 
       <nav class="side-nav" aria-label="主导航">
@@ -67,23 +67,24 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
           :class="{ active: isActive(item.to) }" :title="sidebarCollapsed ? item.label : undefined"
         >
           <component :is="item.icon" :size="17" :stroke-width="1.8" />
-          <span>{{ item.label }}</span>
+          <span class="fade">{{ item.label }}</span>
         </RouterLink>
       </nav>
 
       <div class="side-foot">
-        <div v-if="session" class="me">
-          <b class="avatar">{{ session.username.slice(0, 1).toUpperCase() }}</b>
-          <div class="me-text">{{ session.username }}<small>{{ roleLabel }}</small></div>
-        </div>
         <button
           type="button" class="side-toggle"
           :aria-label="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'" :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
           :aria-expanded="!sidebarCollapsed" @click="toggleSidebar"
         >
-          <PanelLeftOpen v-if="sidebarCollapsed" :size="17" />
-          <PanelLeftClose v-else :size="17" />
+          <PanelLeftOpen v-if="sidebarCollapsed" :size="17" :stroke-width="1.8" />
+          <PanelLeftClose v-else :size="17" :stroke-width="1.8" />
+          <span class="fade">{{ sidebarCollapsed ? '展开侧边栏' : '收起侧边栏' }}</span>
         </button>
+        <div v-if="session" class="me">
+          <b class="avatar">{{ session.username.slice(0, 1).toUpperCase() }}</b>
+          <div class="me-text fade">{{ session.username }}<small>{{ roleLabel }}</small></div>
+        </div>
       </div>
     </aside>
 
@@ -106,34 +107,30 @@ const roleLabel = computed(() => (session.value?.role === 'admin' ? '系统管�
 
 .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; transition: grid-template-columns .2s ease; }
 .shell.collapsed { grid-template-columns: 72px minmax(0, 1fr); }
-.side { position: sticky; top: 0; display: flex; height: 100vh; flex-direction: column; padding: 18px 14px; background: var(--color-sidebar); }
+/* 收起/展开只改变侧栏宽度：图标位置两种状态完全一致，文字区域固定宽度不重排，被裁切后淡出 */
+.side { position: sticky; top: 0; display: flex; height: 100vh; flex-direction: column; padding: 18px 14px; overflow: hidden; background: var(--color-sidebar); }
+.fade { transition: opacity .2s ease .12s; }
+.collapsed .fade { opacity: 0; transition: opacity .1s ease; pointer-events: none; }
 
-.brand { display: flex; align-items: flex-start; gap: 10px; padding: 4px 6px 18px; border-bottom: 1px solid var(--color-sidebar-line); }
+.brand { display: flex; align-items: flex-start; gap: 10px; padding: 4px 5px 18px; border-bottom: 1px solid var(--color-sidebar-line); }
+.brand-text { flex: none; width: 148px; }
 .brand-text strong { display: block; font-size: 13px; line-height: 1.45; text-wrap: balance; }
 .version { display: inline-block; margin-top: 4px; padding: 0 6px; border-radius: 4px; background: var(--color-surface); color: var(--color-primary); font-size: 11px; font-weight: 600; }
 .auth-brand .version { margin-top: 0; background: var(--color-accent); color: var(--color-on-accent); }
 
 .side-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 14px; }
-.side-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: var(--color-text-secondary); text-decoration: none; white-space: nowrap; }
-.side-nav a svg { flex: none; opacity: .75; }
-.side-nav a:hover { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
+.side-nav a, .side-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 13px; border: 0; border-radius: 10px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 14px; text-align: left; text-decoration: none; white-space: nowrap; }
+.side-nav a svg, .side-toggle svg { flex: none; opacity: .75; }
+.side-nav a:hover, .side-toggle:hover { background: color-mix(in srgb, var(--color-surface) 55%, transparent); }
 .side-nav a.active { background: var(--color-surface); box-shadow: var(--shadow-raised); color: var(--color-primary); font-weight: 600; }
 .side-nav a.active svg { color: var(--color-behavior); opacity: 1; }
 
-.side-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; }
-.me { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 10px; border-radius: 10px; background: var(--color-surface); font-size: 13px; }
+.side-foot { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.side-toggle { color: var(--color-text-muted); }
+.me { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px; border-radius: 10px; background: var(--color-surface); font-size: 13px; }
 .avatar { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 12px; }
 .me-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me-text small { display: block; color: var(--color-text-muted); font-size: 12px; }
-.side-toggle { display: grid; flex: none; width: 30px; height: 30px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-muted); }
-.side-toggle:hover { background: var(--color-surface); color: var(--color-primary); }
-
-.collapsed .side { padding-right: 10px; padding-left: 10px; }
-.collapsed .brand { justify-content: center; padding-right: 0; padding-left: 0; }
-.collapsed .brand-text, .collapsed .side-nav a span, .collapsed .me-text { display: none; }
-.collapsed .side-nav a { justify-content: center; padding: 10px 0; }
-.collapsed .side-foot { flex-direction: column; }
-.collapsed .me { justify-content: center; padding: 6px; background: transparent; }
 
 .main { min-width: 0; }
 

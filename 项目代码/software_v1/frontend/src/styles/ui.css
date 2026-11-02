@@ -1,7 +1,8 @@
 /* 全局通用样式：页面框架、按钮、标签、表单、表格、状态提示。颜色全部取自 tokens.css。 */
 
 /* 页面框架 */
-.page { max-width: 1280px; padding: 22px 28px 40px; }
+/* 内容区在主区域内水平居中，侧栏展开或收起时两侧留白对称 */
+.page { max-width: 1280px; margin: 0 auto; padding: 22px 28px 40px; }
 .crumb { color: var(--color-text-muted); font-size: 13px; }
 .crumb a { color: inherit; text-decoration: none; }
 .crumb a:hover { color: var(--color-primary); }
@@ -33,6 +34,8 @@
 .tag.primary { background: var(--color-primary-soft); color: var(--color-primary); }
 .tag.behavior { background: var(--color-behavior-soft); color: color-mix(in srgb, var(--color-behavior) 80%, #000); }
 .tag.neutral { background: var(--color-track); color: var(--color-text-secondary); }
+/* 同一列里的标签统一宽度，保证后面的内容纵向对齐 */
+.tag.fixed { justify-content: center; min-width: 5.2em; }
 
 /* 状态 */
 .state-card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); color: var(--color-text-secondary); text-align: center; }

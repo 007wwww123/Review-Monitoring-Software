@@ -120,7 +120,7 @@ onMounted(loadOverview);
         <div v-else-if="!records.length" class="empty-hint">暂无检测记录</div>
         <div v-else class="recent">
           <RouterLink v-for="item in records.slice(0, 5)" :key="item.result_id" :to="`/results/${item.result_id}`" class="recent-row">
-            <span class="tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
+            <span class="tag fixed" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
             <div class="recent-text"><strong class="num">{{ item.review_id || `结果 #${item.result_id}` }}</strong><p>{{ item.text_excerpt }}</p></div>
             <time class="num">{{ formatDateTime(item.created_at) }}</time>
             <ArrowRight :size="15" />
@@ -170,7 +170,9 @@ onMounted(loadOverview);
 .legend b { color: var(--color-text); font-weight: 600; }
 .scope-note { display: flex; align-items: center; gap: 6px; margin: 0 0 16px; color: var(--color-text-muted); font-size: 12px; }
 
-.bottom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); align-items: start; gap: 16px; }
+/* 底部两栏等高：右栏最后一张卡片填满剩余高度 */
+.bottom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); align-items: stretch; gap: 16px; }
+.bottom .stack > :last-child { flex: 1; }
 .recent { display: flex; flex-direction: column; }
 .recent-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 16px; align-items: center; gap: 12px; padding: 11px 6px; border-bottom: 1px solid var(--color-line); color: inherit; text-decoration: none; }
 .recent-row:last-child { border-bottom: 0; }

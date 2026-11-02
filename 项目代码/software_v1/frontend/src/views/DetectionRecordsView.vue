@@ -131,7 +131,7 @@ onMounted(loadRecords);
               </td>
               <td class="muted num user-cell"><span :title="item.user_key">{{ shortId(item.user_key, 4) }}</span><br />{{ item.product_id }}</td>
               <td class="prob-cell">
-                <span class="tag auth-tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
+                <span class="tag fixed auth-tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
                 <span class="prob" :class="item.authenticity"><i :style="{ width: percent(fakeProbability(item)) }"></i></span>
                 <small class="num">{{ percent(fakeProbability(item)) }}</small>
               </td>
@@ -139,7 +139,7 @@ onMounted(loadRecords);
                 <span>{{ semanticLabels[item.semantic_type] }}</span>
                 <small :class="{ warn: item.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[item.behavior_type] }}</small>
               </td>
-              <td><span class="tag action-tag" :class="actionTone[item.action]">{{ actionLabels[item.action] }}</span></td>
+              <td><span class="tag fixed action-tag" :class="actionTone[item.action]">{{ actionLabels[item.action] }}</span></td>
               <td class="muted num time-cell">{{ formatDateTime(item.created_at) }}</td>
               <td class="op-cell">
                 <RouterLink class="btn small" :to="`/results/${item.result_id}`" :aria-label="`查看结果 ${item.result_id} 详情`">查看分析<ArrowRight :size="14" /></RouterLink>
