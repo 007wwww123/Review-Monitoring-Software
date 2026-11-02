@@ -6,7 +6,7 @@ COPY backend /app/backend
 COPY model_core /app/model_core
 COPY configs /app/configs
 COPY scripts /app/scripts
-RUN python -m pip install --no-cache-dir -e /app/model_core -e /app/backend
+RUN python -m pip install --no-cache-dir -r /app/backend/requirements.txt
 
 ENV PYTHONPATH=/app/backend:/app/model_core
 WORKDIR /app/backend

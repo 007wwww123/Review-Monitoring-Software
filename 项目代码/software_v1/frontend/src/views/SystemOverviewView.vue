@@ -9,7 +9,7 @@ const total = ref(0);
 const loading = ref(true);
 const errorMessage = ref('');
 const serviceOnline = ref(false);
-const runtimeMode = import.meta.env.VITE_USE_MOCK_API === 'false' ? 'FastAPI' : 'MSW Mock';
+const runtimeMode = 'FastAPI';
 
 const fakeCount = computed(() => records.value.filter((item) => item.authenticity === 'fake').length);
 const reviewCount = computed(() => records.value.filter((item) => item.action === 'review').length);
@@ -101,7 +101,7 @@ onMounted(loadOverview);
         </section>
         <section class="overview-panel service-panel">
           <div class="section-heading"><div><h2>运行状态</h2><p>来自现有健康检查接口</p></div></div>
-          <div class="service-status" :class="{ offline: !serviceOnline }"><CheckCircle2 v-if="serviceOnline" :size="20" /><AlertCircle v-else :size="20" /><div><strong>{{ serviceOnline ? 'API 可访问' : 'API 不可访问' }}</strong><span>{{ serviceOnline ? '健康检查返回 ok' : '请检查后端或 Mock 服务' }}</span></div></div>
+          <div class="service-status" :class="{ offline: !serviceOnline }"><CheckCircle2 v-if="serviceOnline" :size="20" /><AlertCircle v-else :size="20" /><div><strong>{{ serviceOnline ? 'API 可访问' : 'API 不可访问' }}</strong><span>{{ serviceOnline ? '健康检查返回 ok' : '请检查后端服务' }}</span></div></div>
           <dl class="overview-facts"><div><dt>运行模式</dt><dd>{{ runtimeMode }}</dd></div><div><dt>数据口径</dt><dd>最近 100 条</dd></div></dl>
         </section>
       </aside>

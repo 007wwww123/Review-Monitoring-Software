@@ -11,7 +11,7 @@ import { isAuthenticated } from './auth';
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', component: LoginView, meta: { public: true } },
+    { path: '/login', component: LoginView, meta: { public: true, layout: 'auth' } },
     { path: '/', redirect: '/overview' },
     { path: '/overview', component: SystemOverviewView },
     { path: '/settings', component: SystemSettingsView },

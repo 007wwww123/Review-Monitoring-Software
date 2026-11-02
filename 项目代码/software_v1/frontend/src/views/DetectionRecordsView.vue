@@ -82,7 +82,7 @@ onMounted(loadRecords);
         <h1>{{ evidenceMode ? '结果与证据' : '检测记录' }}</h1>
         <p>{{ evidenceMode ? '选择一条检测记录，查看模型输出、证据状态与解释边界。' : '查询单条与批量任务产生的检测结果摘要。' }}</p>
       </div>
-      <span class="api-state"><span></span>Mock 数据集 · {{ total }} 条</span>
+      <span class="api-state"><span></span>FastAPI 数据 · {{ total }} 条</span>
     </div>
 
     <section class="records-panel">

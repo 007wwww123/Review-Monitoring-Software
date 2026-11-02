@@ -15,11 +15,11 @@ async function mountView(hash = '') {
 describe('SystemSettingsView', () => {
   beforeEach(() => localStorage.clear());
 
-  it('loads account, model and clearly marked evaluation history', async () => {
+  it('loads account, model and evaluation history without a mock data notice', async () => {
     const { wrapper } = await mountView();
     expect(wrapper.text()).toContain('系统管理员');
     expect(wrapper.text()).toContain('模型版本与配置');
-    expect(wrapper.text()).toContain('模拟联调数据，不代表真实模型性能');
+    expect(wrapper.text()).not.toContain('模拟联调数据');
     expect(wrapper.text()).toContain('88.4%');
     expect(wrapper.find('.matrix-wrap').exists()).toBe(true);
     expect(wrapper.get('#evaluations button[disabled]').text()).toBe('发起评估');

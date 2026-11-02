@@ -6,7 +6,10 @@ import App from './App.vue';
 async function mountApp() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/overview', component: { template: '<div>overview</div>' } }],
+    routes: [
+      { path: '/overview', component: { template: '<div>overview</div>' } },
+      { path: '/login', component: { template: '<div class="login-test-view">login</div>' }, meta: { layout: 'auth' } },
+    ],
   });
   await router.push('/overview');
   await router.isReady();
@@ -37,5 +40,24 @@ describe('App sidebar', () => {
     localStorage.setItem('review-monitoring.sidebar-collapsed', 'true');
     const wrapper = await mountApp();
     expect(wrapper.classes()).toContain('sidebar-collapsed');
+  });
+
+  it('uses the auth layout without business navigation on the login route', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/overview', component: { template: '<div>overview</div>' } },
+        { path: '/login', component: { template: '<div class="login-test-view">login</div>' }, meta: { layout: 'auth' } },
+      ],
+    });
+    await router.push('/login');
+    await router.isReady();
+    const wrapper = mount(App, { global: { plugins: [router] } });
+
+    expect(wrapper.find('.auth-shell').exists()).toBe(true);
+    expect(wrapper.find('.auth-header').text()).toContain('全域电商异常评论监测平台');
+    expect(wrapper.find('.sidebar').exists()).toBe(false);
+    expect(wrapper.find('.topbar').exists()).toBe(false);
+    expect(wrapper.find('.login-test-view').exists()).toBe(true);
   });
 });

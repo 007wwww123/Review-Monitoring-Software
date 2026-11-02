@@ -43,6 +43,7 @@ flowchart LR
 
 ```bash
 cd backend
+python -m pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -54,7 +55,7 @@ cd backend
 python ../scripts/run_worker.py
 ```
 
-前端默认连接真实FastAPI；只有显式设置`VITE_USE_MOCK_API=true`时才启用开发模拟接口：
+前端通过同源`/api`路径连接真实FastAPI；本地开发服务器会把该路径代理到`http://127.0.0.1:8000`：
 
 ```bash
 cd frontend
