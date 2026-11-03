@@ -5,7 +5,7 @@
   --color-behavior: #ff6b4a;  /* 珊瑚：行为流 */
   --color-fake: #c81d55;      /* 宝石红：疑似虚假 */
   --color-warn: #c08a12;      /* 金：人工复核、未校准 */
-  --color-accent: #c8f03c;    /* 酸性黄绿：小面积点睛（正常、可用、选中） */
+  --color-accent: #c9efe0;    /* 浅薄荷：小面积点睛（正常、可用、选中） */
 
   /* 浅色底，由主色派生 */
   --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, var(--color-mix-base));
@@ -15,7 +15,7 @@
 
   /* 固定色：不随主题变化 */
   --color-brand-deep: #13294b;  /* 登录页品牌区、Logo 底色 */
-  --color-on-accent: #13294b;   /* 黄绿底上的文字 */
+  --color-on-accent: #13294b;   /* 点睛色底上的文字 */
   --color-on-primary: #fff;     /* 主色实底上的文字 */
   --color-mix-base: #fff;       /* 派生浅色底时混入的底色 */
 
