@@ -1,11 +1,11 @@
 /* 设计变量：颜色、圆角、阴影。新组件一律从这里取值，不写死颜色。 */
 :root {
   /* 品牌与数据通道 */
-  --color-primary: #13294b;   /* 海军蓝：主色、语义流 */
-  --color-behavior: #ff6b4a;  /* 珊瑚：行为流 */
+  --color-primary: #0f4a4f;   /* 深青：主色、语义流 */
+  --color-behavior: #6a6fe0;  /* 靛紫：行为流 */
   --color-fake: #c81d55;      /* 宝石红：疑似虚假 */
   --color-warn: #c08a12;      /* 金：人工复核、未校准 */
-  --color-accent: #c9efe0;    /* 浅薄荷：小面积点睛（正常、可用、选中） */
+  --color-accent: #d6ece9;    /* 浅青（主色的浅色）：正常、可用、选中 */
 
   /* 浅色底，由主色派生 */
   --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, var(--color-mix-base));
@@ -14,8 +14,8 @@
   --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, var(--color-mix-base));
 
   /* 固定色：不随主题变化 */
-  --color-brand-deep: #13294b;  /* 登录页品牌区、Logo 底色 */
-  --color-on-accent: #13294b;   /* 点睛色底上的文字 */
+  --color-brand-deep: #0f4a4f;  /* 登录页品牌区、Logo 底色 */
+  --color-on-accent: #0f4a4f;   /* 点睛色底上的文字 */
   --color-on-primary: #fff;     /* 主色实底上的文字 */
   --color-mix-base: #fff;       /* 派生浅色底时混入的底色 */
 
@@ -46,8 +46,8 @@
 
 /* 深色主题：主色提亮，主色实底上的文字改为深色 */
 [data-theme="dark"] {
-  --color-primary: #9aa6ff;
-  --color-behavior: #ff7c5e;
+  --color-primary: #6cc8bd;
+  --color-behavior: #9195ff;
   --color-fake: #ff5a87;
   --color-warn: #e3a92b;
   --color-on-primary: #141834;

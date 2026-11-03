@@ -15,7 +15,7 @@
 
 <style scoped>
 .dual-stream { display: block; width: 100%; max-width: 440px; }
-.band.semantic { fill: #8f99e8; }
+.band.semantic { fill: #7fd0c4; } /* 深色品牌底上的语义流：主色提亮 */
 .band.behavior { fill: var(--color-behavior); }
 .band.out { fill: rgb(255 255 255 / 85%); }
 .gate { fill: rgb(255 255 255 / 10%); stroke: rgb(255 255 255 / 55%); stroke-width: 1.5; }
