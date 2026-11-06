@@ -33,7 +33,7 @@ const nameLines = computed(() => {
     <RouterLink to="/overview" class="brand" :title="APP_NAME">
       <AppLogo class="brand-logo" />
       <span class="brand-name fade">
-        <strong><span v-for="line in nameLines" :key="line">{{ line }}</span></strong>
+        <strong :class="{ single: nameLines.length === 1 }"><span v-for="line in nameLines" :key="line">{{ line }}</span></strong>
         <em>{{ APP_VERSION }}</em>
       </span>
     </RouterLink>
@@ -86,6 +86,7 @@ const nameLines = computed(() => {
 .brand-name { width: 208px; }
 .collapsed .brand-name { height: 0; overflow: hidden; }
 .brand-name strong { display: flex; flex-direction: column; font-size: 14px; font-weight: 600; line-height: 21px; white-space: nowrap; }
+.brand-name strong.single { font-size: 16px; line-height: 24px; }
 .brand-name em { display: inline-block; margin-top: 6px; padding: 0 8px; border-radius: 4px; background: var(--color-primary-soft); font-size: 12px; font-style: normal; font-weight: 500; line-height: 20px; }
 
 .side-nav { display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 4px 8px 16px; overflow-x: hidden; overflow-y: auto; }
