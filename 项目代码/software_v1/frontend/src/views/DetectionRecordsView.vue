@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { AlertCircle, ChevronLeft, ChevronRight, ClipboardCheck, FileClock, Info, RefreshCw, Search } from 'lucide-vue-next';
 import { ApiError, getDetectionRecords } from '../api/client';
 import type { Action, Authenticity, DetectionRecordItem } from '../types';
@@ -10,7 +11,9 @@ import { actionLabels, actionTone, authenticityLabels, behaviorLabels, fakeProba
 const props = defineProps<{ mode?: 'all' | 'review' }>();
 const isQueue = computed(() => props.mode === 'review');
 
-const filters = reactive({ keyword: '', authenticity: '' as Authenticity | '', action: '' as Action | '', date_from: '', date_to: '' });
+// 顶栏搜索会带上 ?keyword=，进入页面时直接按关键词查询
+const route = useRoute();
+const filters = reactive({ keyword: typeof route?.query.keyword === 'string' ? route.query.keyword : '', authenticity: '' as Authenticity | '', action: '' as Action | '', date_from: '', date_to: '' });
 const records = ref<DetectionRecordItem[]>([]);
 const total = ref(0);
 const page = ref(1);
@@ -78,7 +81,6 @@ onMounted(loadRecords);
 
 <template>
   <section class="page records-page">
-    <nav class="crumb" aria-label="面包屑">工作台 / <b>{{ isQueue ? '待复核队列' : '检测记录' }}</b></nav>
     <header class="page-title">
       <h1>{{ isQueue ? '待复核队列' : '检测记录' }}</h1>
       <span class="page-id">{{ isQueue ? '融合判定建议人工复核的检测结果，逐条查看分析后由审核员认定' : '单条检测与批量任务产生的全部检测结果' }}</span>

@@ -96,7 +96,6 @@ onMounted(loadOverview);
 
 <template>
   <section class="page overview-page">
-    <nav class="crumb" aria-label="面包屑">工作台 / <b>系统概览</b></nav>
     <header class="page-title">
       <h1>系统概览</h1>
       <span class="page-id">{{ username ? `欢迎回来，${username}。` : '' }}今天是 {{ today }}</span>

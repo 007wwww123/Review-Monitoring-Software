@@ -120,7 +120,6 @@ watch(() => route.params.resultId, loadResult);
 
 <template>
   <section class="page detail-page">
-    <nav class="crumb" aria-label="面包屑">工作台 / <RouterLink to="/results">检测记录</RouterLink> / <b>结果详情</b></nav>
     <header class="page-title">
       <h1>检测结果详情</h1>
       <span class="page-id num">{{ result ? `评论编号 ${result.review_id || `#${result.result_id}`} · 检测于 ${formatDateTime(result.created_at)}` : '正在读取检测结果' }}</span>

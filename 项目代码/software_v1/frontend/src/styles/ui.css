@@ -1,12 +1,8 @@
 /* 全局通用样式：页面框架、按钮、标签、表单、表格、状态提示。颜色全部取自 tokens.css。 */
 
-/* 页面框架：面包屑 → 标题与说明（左）+ 操作（右）→ 内容 */
+/* 页面框架：标题与说明（左）+ 操作（右）→ 内容。面包屑在顶栏里 */
 .page { max-width: 1360px; margin: 0 auto; padding: 16px 24px 32px; }
-.crumb { color: var(--color-text-muted); font-size: 13px; }
-.crumb a { color: inherit; text-decoration: none; }
-.crumb a:hover { color: var(--color-primary); }
-.crumb b { color: var(--color-text-secondary); font-weight: 400; }
-.page-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 16px; margin: 8px 0 16px; }
+.page-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 16px; margin: 4px 0 16px; }
 .page-title h1 { grid-column: 1; margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
 .page-id { grid-column: 1; color: var(--color-text-muted); font-size: 13px; line-height: 20px; }
 .page-actions { display: flex; grid-column: 2; grid-row: 1 / span 2; align-items: center; gap: 8px; }

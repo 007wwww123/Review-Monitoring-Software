@@ -149,7 +149,6 @@ onBeforeUnmount(() => { pollingGeneration += 1; });
 
 <template>
   <section class="page batch-page">
-    <nav class="crumb" aria-label="面包屑">发起检测 / <b>批量检测任务</b></nav>
     <header class="page-title">
       <h1>批量检测任务</h1>
       <span class="page-id">导入评论文件，校验数据后提交统一检测任务</span>

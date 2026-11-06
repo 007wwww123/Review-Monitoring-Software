@@ -108,7 +108,6 @@ async function submit() {
 
 <template>
   <section class="page single-page">
-    <nav class="crumb" aria-label="面包屑">发起检测 / <b>单条评论检测</b></nav>
     <header class="page-title">
       <h1>单条评论检测</h1>
       <span class="page-id">提交一条评论及可选的历史行为，获取语义与行为融合后的审核建议</span>

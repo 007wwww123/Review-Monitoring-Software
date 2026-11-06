@@ -67,12 +67,12 @@ describe('SystemSettingsView', () => {
   it('routes between settings sections even when account loading fails', async () => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ detail: '账户服务暂不可用' }, { status: 500 })));
     const { wrapper, router } = await mountView('#appearance');
-    expect(wrapper.get('.settings-anchor-nav a.active').text()).toBe('界面偏好');
+    expect(wrapper.get('.page-title h1').text()).toBe('界面偏好');
     expect(wrapper.get('.settings-main').classes()).toContain('section-appearance');
     expect(wrapper.find('.settings-message.is-error').exists()).toBe(false);
 
     await router.push('/settings#models'); await flushPromises();
-    expect(wrapper.get('.settings-anchor-nav a.active').text()).toBe('模型版本');
+    expect(wrapper.get('.page-title h1').text()).toBe('模型版本');
     expect(wrapper.get('.settings-main').classes()).toContain('section-models');
   });
 });
