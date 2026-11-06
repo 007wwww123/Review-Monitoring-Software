@@ -24,7 +24,7 @@ async function submit() {
 <template>
   <section class="login-card" aria-labelledby="login-title">
     <form @submit.prevent="submit">
-      <h2 id="login-title">账号登录</h2>
+      <h2 id="login-title">欢迎登录</h2>
       <p class="login-sub">请输入审核账号继续使用系统</p>
       <label class="ui-field">
         <span>用户名</span>
@@ -42,14 +42,14 @@ async function submit() {
 </template>
 
 <style scoped>
-.login-card { width: min(100%, 400px); padding: 36px 34px; border-radius: 16px; background: var(--color-surface); box-shadow: 0 10px 40px rgb(22 26 51 / 8%), var(--shadow-card); }
+.login-card { width: min(100%, 400px); padding: 40px 36px; border-radius: 12px; background: var(--color-surface); box-shadow: 0 12px 40px rgb(29 33 41 / 8%); }
 form { display: flex; flex-direction: column; gap: 16px; }
-h2 { margin: 0; font-size: 24px; }
+h2 { margin: 0; font-size: 24px; font-weight: 600; }
 .login-sub { margin: -10px 0 6px; color: var(--color-text-muted); font-size: 14px; }
 .input-icon { position: relative; display: block; }
 .input-icon svg { position: absolute; top: 50%; left: 12px; color: var(--color-text-muted); transform: translateY(-50%); }
-.input-icon .ui-input { padding: 10px 12px 10px 38px; }
+.input-icon .ui-input { height: 40px; padding-left: 38px; }
 .alert-bar { margin: 0; }
-.login-submit { width: 100%; padding: 10px 14px; margin-top: 4px; font-size: 15px; }
+.login-submit { width: 100%; height: 40px; margin-top: 8px; font-size: 15px; }
 .login-note { color: var(--color-text-muted); font-size: 12px; text-align: center; }
 </style>

@@ -1,72 +1,104 @@
-/* 设计变量：颜色、圆角、阴影。新组件一律从这里取值，不写死颜色。 */
+/* 设计变量：颜色、圆角、阴影。新组件一律从这里取值，不写死颜色。
+   色板参照字节跳动 Arco Design 的标准色（中后台通用）：中性灰占大部分面积，
+   主色只用于可交互元素和选中态，红/橙/绿只表示状态，紫色只表示行为流。 */
 :root {
-  /* 品牌与数据通道 */
-  --color-primary: #0f4a4f;   /* 深青：主色、语义流 */
-  --color-behavior: #6a6fe0;  /* 靛紫：行为流 */
-  --color-fake: #c81d55;      /* 宝石红：疑似虚假 */
-  --color-warn: #c08a12;      /* 金：人工复核、未校准 */
-  --color-accent: #d6ece9;    /* 浅青（主色的浅色）：正常、可用、选中 */
+  /* 主色：科技蓝 arcoblue-6，可在「界面偏好」里切换 */
+  --color-primary: #165dff;
+  --color-primary-hover: #4080ff;
+  --color-primary-active: #0e42d2;
+  --color-primary-soft: #e8f3ff;    /* 选中项、浅色标签底 */
+  --color-primary-soft-2: #bedaff;  /* 次要数据、悬停底 */
 
-  /* 浅色底，由主色派生 */
-  --color-primary-soft: color-mix(in srgb, var(--color-primary) 9%, var(--color-mix-base));
-  --color-behavior-soft: color-mix(in srgb, var(--color-behavior) 10%, var(--color-mix-base));
-  --color-fake-soft: color-mix(in srgb, var(--color-fake) 8%, var(--color-mix-base));
-  --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, var(--color-mix-base));
+  /* 数据通道：语义流用主色，行为流用紫色 */
+  --color-behavior: #722ed1;
+  --color-behavior-soft: #f5e8ff;
+  --color-cyan: #14c9c9;            /* 图表辅助色 */
 
-  /* 固定色：不随主题变化 */
-  --color-brand-deep: #0f4a4f;  /* 登录页品牌区、Logo 底色 */
-  --color-on-accent: #0f4a4f;   /* 点睛色底上的文字 */
-  --color-on-primary: #fff;     /* 主色实底上的文字 */
-  --color-mix-base: #fff;       /* 派生浅色底时混入的底色 */
+  /* 功能色 */
+  --color-fake: #f53f3f;            /* 疑似虚假、错误 */
+  --color-fake-soft: #ffece8;
+  --color-warn: #ff7d00;            /* 人工复核、提醒 */
+  --color-warn-soft: #fff7e8;
+  --color-success: #00b42a;         /* 真实、可用、完成 */
+  --color-success-soft: #e8ffea;
 
-  /* 中性色 */
-  --color-bg: #f3f4f8;
+  --color-on-primary: #fff;         /* 主色实底上的文字 */
+  --color-mix-base: #fff;           /* 派生浅色时混入的底色 */
+
+  /* 中性色：Arco gray-1 ~ gray-10 */
+  --color-bg: #f2f3f5;
   --color-surface: #fff;
-  --color-surface-muted: #f7f8fb;
-  --color-sidebar: #eceef6;
-  --color-line: #e5e7ef;
-  --color-text: #161a33;
-  --color-text-secondary: #475069;
-  --color-text-muted: #6c7189;
-  --color-track: #eef0f5;
-  --color-line-strong: #c9cedd;
-  --color-sidebar-line: #dde0ec;
-  --color-placeholder: #a3a8bb;
+  --color-surface-muted: #f7f8fa;
+  --color-line: #e5e6eb;
+  --color-line-strong: #c9cdd4;
+  --color-text: #1d2129;
+  --color-text-secondary: #4e5969;
+  --color-text-muted: #86909c;
+  --color-placeholder: #a9aeb8;
+  --color-track: #f2f3f5;
 
-  --radius-card: 12px;
-  --radius-control: 9px;
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 1px 3px rgb(16 24 40 / 5%);
-  --shadow-raised: 0 1px 2px rgb(22 26 51 / 8%), 0 0 0 1px rgb(22 26 51 / 4%);
-  --font-sans: "PingFang SC", "Microsoft YaHei", Inter, Arial, sans-serif;
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --shadow-card: 0 2px 6px rgb(29 33 41 / 4%);
+  --shadow-raised: 0 4px 16px rgb(29 33 41 / 10%);
+  --header-height: 60px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
 
   color: var(--color-text);
   background: var(--color-bg);
   font-family: var(--font-sans);
 }
 
-/* 深色主题：主色提亮，主色实底上的文字改为深色 */
+/* 主题色预设（界面偏好里选择） */
+[data-accent="ocean"] {
+  --color-primary: #0052d9;
+  --color-primary-hover: #366ef4;
+  --color-primary-active: #003cab;
+  --color-primary-soft: #ecf2fe;
+  --color-primary-soft-2: #b5c7ff;
+}
+[data-accent="violet"] {
+  --color-primary: #722ed1;
+  --color-primary-hover: #8d4eda;
+  --color-primary-active: #551db0;
+  --color-primary-soft: #f5e8ff;
+  --color-primary-soft-2: #ddbef6;
+  /* 主色是紫色时，行为流改用青色，避免两路数据同色 */
+  --color-behavior: #0fa5aa;
+  --color-behavior-soft: #e8fffb;
+}
+
+/* 深色主题：Arco 暗色中性色 */
 [data-theme="dark"] {
-  --color-primary: #6cc8bd;
-  --color-behavior: #9195ff;
-  --color-fake: #ff5a87;
-  --color-warn: #e3a92b;
-  --color-on-primary: #141834;
-  --color-mix-base: #1b1f3a;
-  --color-bg: #11142a;
-  --color-surface: #1b1f3a;
-  --color-surface-muted: #22274a;
-  --color-sidebar: #161a33;
-  --color-line: #2d3258;
-  --color-line-strong: #4a5080;
-  --color-sidebar-line: #262b4d;
-  --color-placeholder: #6c7196;
-  --color-text: #e9ebf7;
-  --color-text-secondary: #b8bcd8;
-  --color-text-muted: #8a8fb2;
-  --color-track: #2a2f55;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%);
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 40%);
+  --color-primary: #3c7eff;
+  --color-primary-hover: #689fff;
+  --color-primary-active: #2a5ed6;
+  --color-primary-soft: #1a2a4d;
+  --color-primary-soft-2: #24407a;
+  --color-behavior: #a871e3;
+  --color-behavior-soft: #2f2342;
+  --color-fake: #f76965;
+  --color-fake-soft: #3d2324;
+  --color-warn: #ff9626;
+  --color-warn-soft: #3b2c1c;
+  --color-success: #27c346;
+  --color-success-soft: #1c3324;
+  --color-mix-base: #232324;
+  --color-bg: #17171a;
+  --color-surface: #232324;
+  --color-surface-muted: #2a2a2b;
+  --color-line: #333335;
+  --color-line-strong: #484849;
+  --color-text: #f2f2f3;
+  --color-text-secondary: #c5c5c6;
+  --color-text-muted: #929293;
+  --color-placeholder: #6b6b6c;
+  --color-track: #2e2e30;
+  --shadow-card: none;
+  --shadow-raised: 0 4px 16px rgb(0 0 0 / 40%);
   color-scheme: dark;
 }
+[data-theme="dark"][data-accent="violet"] { --color-primary: #a871e3; --color-primary-soft: #2f2342; --color-primary-soft-2: #4b3270; --color-behavior: #30c9c9; --color-behavior-soft: #1b3333; }
+[data-theme="dark"][data-accent="ocean"] { --color-primary: #4582e6; --color-primary-soft: #1b2a47; }
 
 .num { font-variant-numeric: tabular-nums; }

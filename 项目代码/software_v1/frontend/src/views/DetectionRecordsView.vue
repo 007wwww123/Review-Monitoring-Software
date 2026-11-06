@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { AlertCircle, ArrowRight, ChevronLeft, ChevronRight, FileClock, RefreshCw, Search } from 'lucide-vue-next';
+import { AlertCircle, ChevronLeft, ChevronRight, ClipboardCheck, FileClock, Info, RefreshCw, Search } from 'lucide-vue-next';
 import { ApiError, getDetectionRecords } from '../api/client';
 import type { Action, Authenticity, DetectionRecordItem } from '../types';
 import AppCard from '../components/AppCard.vue';
-import { actionLabels, authenticityLabels, behaviorLabels, formatDateTime, percent, semanticLabels, shortId } from '../labels';
+import { actionLabels, actionTone, authenticityLabels, behaviorLabels, fakeProbabilityOf, formatDateTime, percent, semanticLabels } from '../labels';
+
+// mode = review 时作为"待复核队列"：固定只看处置建议为人工复核的结果，隐藏处置建议筛选
+const props = defineProps<{ mode?: 'all' | 'review' }>();
+const isQueue = computed(() => props.mode === 'review');
 
 const filters = reactive({ keyword: '', authenticity: '' as Authenticity | '', action: '' as Action | '', date_from: '', date_to: '' });
 const records = ref<DetectionRecordItem[]>([]);
@@ -20,20 +24,20 @@ const rangeEnd = computed(() => Math.min(page.value * pageSize, total.value));
 const authenticityOptions: { value: Authenticity | ''; label: string }[] = [
   { value: '', label: '全部' }, { value: 'fake', label: '疑似虚假' }, { value: 'real', label: '真实' },
 ];
-const actionTone = { keep: 'ok', review: 'warn', block: 'fake' } as const;
-// 列表只有真实性和置信度，换算成虚假概率展示
-const fakeProbability = (item: DetectionRecordItem) => item.authenticity === 'fake' ? item.confidence : 1 - item.confidence;
+// 虚假概率分三档着色：≥ 70% 高、≥ 50% 中、其余低
+const probLevel = (value: number) => value >= 0.7 ? 'high' : value >= 0.5 ? 'mid' : 'low';
 
 async function loadRecords() {
   loading.value = true;
   errorMessage.value = '';
+  const action = isQueue.value ? 'review' : filters.action;
   try {
     const response = await getDetectionRecords({
       page: page.value,
       page_size: pageSize,
       ...(filters.keyword.trim() ? { keyword: filters.keyword.trim() } : {}),
       ...(filters.authenticity ? { authenticity: filters.authenticity } : {}),
-      ...(filters.action ? { action: filters.action } : {}),
+      ...(action ? { action } : {}),
       ...(filters.date_from ? { date_from: filters.date_from } : {}),
       ...(filters.date_to ? { date_to: filters.date_to } : {}),
     });
@@ -74,15 +78,17 @@ onMounted(loadRecords);
 
 <template>
   <section class="page records-page">
-    <nav class="crumb" aria-label="面包屑">检测工作台 / <b>检测记录</b></nav>
+    <nav class="crumb" aria-label="面包屑">工作台 / <b>{{ isQueue ? '待复核队列' : '检测记录' }}</b></nav>
     <header class="page-title">
-      <h1>检测记录</h1>
-      <span class="page-id">单条检测与批量任务产生的全部检测结果</span>
-      <div class="page-actions"><span class="tag primary num">共 {{ total }} 条</span></div>
+      <h1>{{ isQueue ? '待复核队列' : '检测记录' }}</h1>
+      <span class="page-id">{{ isQueue ? '融合判定建议人工复核的检测结果，逐条查看分析后由审核员认定' : '单条检测与批量任务产生的全部检测结果' }}</span>
+      <div class="page-actions"><span class="total-count num">共 <b>{{ total }}</b> 条</span></div>
     </header>
 
-    <AppCard class="filter-card">
-      <form class="filters" @submit.prevent="search">
+    <div v-if="isQueue" class="alert-bar warn queue-note"><ClipboardCheck :size="16" />以下结果的融合判定给出了“人工复核”建议，系统不会自动处置，请查看分析后由审核员认定。</div>
+
+    <AppCard class="list-card">
+      <form class="filters" :class="{ queue: isQueue }" @submit.prevent="search">
         <label class="ui-field keyword-field">
           <span>关键词</span>
           <span class="input-icon"><Search :size="15" /><input v-model="filters.keyword" class="ui-input" placeholder="评论 ID、用户、商品或评论内容" /></span>
@@ -97,22 +103,26 @@ onMounted(loadRecords);
             >{{ option.label }}</button>
           </div>
         </div>
-        <label class="ui-field">
+        <label v-if="!isQueue" class="ui-field">
           <span>处置建议</span>
           <select v-model="filters.action" class="ui-input action-select">
             <option value="">全部</option><option value="keep">保留</option><option value="review">人工复核</option><option value="block">拦截</option>
           </select>
         </label>
-        <label class="ui-field"><span>开始日期</span><input v-model="filters.date_from" class="ui-input" type="date" /></label>
-        <label class="ui-field"><span>结束日期</span><input v-model="filters.date_to" class="ui-input" type="date" /></label>
+        <div class="ui-field date-field">
+          <span>检测日期</span>
+          <div class="date-range">
+            <input v-model="filters.date_from" class="ui-input" type="date" aria-label="开始日期" />
+            <i>至</i>
+            <input v-model="filters.date_to" class="ui-input" type="date" aria-label="结束日期" />
+          </div>
+        </div>
         <div class="filter-actions">
-          <button type="button" class="btn reset-filters" @click="resetFilters"><RefreshCw :size="15" />重置</button>
           <button type="submit" class="btn primary" :disabled="loading"><Search :size="15" />查询</button>
+          <button type="button" class="btn reset-filters" @click="resetFilters"><RefreshCw :size="15" />重置</button>
         </div>
       </form>
-    </AppCard>
 
-    <AppCard class="table-card">
       <div v-if="errorMessage" class="alert-bar" role="alert">
         <AlertCircle :size="16" />{{ errorMessage }}
         <button type="button" class="btn small retry" @click="loadRecords">重新加载</button>
@@ -121,87 +131,98 @@ onMounted(loadRecords);
       <div class="table-wrap" :class="{ loading }">
         <table class="ui-table record-table">
           <thead>
-            <tr><th>评论</th><th>用户 / 商品</th><th>虚假概率</th><th>语义 / 行为</th><th>处置建议</th><th>检测时间</th><th><span class="sr-only">操作</span></th></tr>
+            <tr><th>评论</th><th>虚假概率</th><th>判定</th><th>语义类型</th><th>行为证据</th><th>处置建议</th><th>检测时间</th><th class="op-head">操作</th></tr>
           </thead>
           <tbody v-if="records.length">
             <tr v-for="item in records" :key="item.result_id">
               <td class="review-cell">
-                <strong class="num">{{ item.review_id || `结果 #${item.result_id}` }}</strong>
                 <p :title="item.text_excerpt">{{ item.text_excerpt }}</p>
+                <small class="num"><span>{{ item.review_id || `结果 #${item.result_id}` }}</span><span>商品 {{ item.product_id }}</span></small>
               </td>
-              <td class="muted num user-cell"><span :title="item.user_key">{{ shortId(item.user_key, 4) }}</span><br />{{ item.product_id }}</td>
               <td class="prob-cell">
-                <span class="tag fixed auth-tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span>
-                <span class="prob" :class="item.authenticity"><i :style="{ width: percent(fakeProbability(item)) }"></i></span>
-                <small class="num">{{ percent(fakeProbability(item)) }}</small>
+                <span class="prob" :class="probLevel(fakeProbabilityOf(item))"><i :style="{ width: percent(fakeProbabilityOf(item)) }"></i></span>
+                <b class="num" :class="probLevel(fakeProbabilityOf(item))">{{ percent(fakeProbabilityOf(item)) }}</b>
               </td>
-              <td class="type-cell">
-                <span>{{ semanticLabels[item.semantic_type] }}</span>
-                <small :class="{ warn: item.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[item.behavior_type] }}</small>
-              </td>
-              <td><span class="tag fixed action-tag" :class="actionTone[item.action]">{{ actionLabels[item.action] }}</span></td>
+              <td><span class="tag fixed auth-tag" :class="item.authenticity === 'fake' ? 'fake' : 'ok'">{{ authenticityLabels[item.authenticity] }}</span></td>
+              <td>{{ semanticLabels[item.semantic_type] }}</td>
+              <td class="behavior-cell" :class="{ insufficient: item.behavior_type === 'insufficient_evidence' }">{{ item.behavior_type === 'insufficient_evidence' ? '证据不足' : behaviorLabels[item.behavior_type] }}</td>
+              <td><span class="tag dot action-tag" :class="actionTone[item.action]">{{ actionLabels[item.action] }}</span></td>
               <td class="muted num time-cell">{{ formatDateTime(item.created_at) }}</td>
               <td class="op-cell">
-                <RouterLink class="btn small" :to="`/results/${item.result_id}`" :aria-label="`查看结果 ${item.result_id} 详情`">查看分析<ArrowRight :size="14" /></RouterLink>
+                <RouterLink class="btn text small" :to="`/results/${item.result_id}`" :aria-label="`查看结果 ${item.result_id} 详情`">{{ isQueue ? '去复核' : '查看分析' }}</RouterLink>
               </td>
             </tr>
           </tbody>
         </table>
 
         <div v-if="loading" class="empty-hint"><span class="spinner dark"></span>正在加载记录…</div>
-        <div v-else-if="!records.length && !errorMessage" class="empty-hint"><FileClock :size="28" /><strong>未找到检测记录</strong>请调整筛选条件后重新查询。</div>
+        <div v-else-if="!records.length && !errorMessage" class="empty-hint"><FileClock :size="40" :stroke-width="1.4" /><strong>未找到检测记录</strong>请调整筛选条件后重新查询。</div>
       </div>
 
       <footer class="table-foot">
         <span class="num">显示 {{ rangeStart }}–{{ rangeEnd }}，共 {{ total }} 条</span>
         <div class="pager">
           <button type="button" class="btn icon small" aria-label="上一页" :disabled="page === 1 || loading" @click="changePage(page - 1)"><ChevronLeft :size="16" /></button>
-          <span class="num">{{ page }} / {{ totalPages }}</span>
+          <span class="num page-no">{{ page }} / {{ totalPages }}</span>
           <button type="button" class="btn icon small" aria-label="下一页" :disabled="page === totalPages || loading" @click="changePage(page + 1)"><ChevronRight :size="16" /></button>
         </div>
       </footer>
     </AppCard>
+    <p v-if="!isQueue" class="foot-note"><Info :size="13" />“证据不足”表示缺少可用的历史行为，不等于行为正常。</p>
   </section>
 </template>
 
 <style scoped>
-.filter-card { margin-bottom: 16px; }
-.filters { display: grid; grid-template-columns: minmax(220px, 1.6fr) auto minmax(120px, .8fr) minmax(130px, .8fr) minmax(130px, .8fr) auto; align-items: end; gap: 14px; }
+.total-count { color: var(--color-text-secondary); font-size: 14px; }
+.total-count b { color: var(--color-text); font-size: 18px; }
+.queue-note { margin-bottom: 16px; }
+
+/* 筛选区在列表卡片顶部，与表格之间用分隔线隔开 */
+.filters { display: grid; grid-template-columns: minmax(220px, 1.4fr) auto minmax(120px, .7fr) minmax(300px, 1.4fr) auto; align-items: end; gap: 16px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--color-line); }
+.filters.queue { grid-template-columns: minmax(240px, 1.4fr) auto minmax(300px, 1.4fr) auto; }
 .input-icon { position: relative; display: block; }
 .input-icon svg { position: absolute; top: 50%; left: 11px; color: var(--color-text-muted); transform: translateY(-50%); }
 .input-icon .ui-input { padding-left: 34px; }
-.segmented { display: inline-flex; padding: 4px; border-radius: var(--radius-control); background: var(--color-track); }
-.segmented button { padding: 5px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 13px; line-height: 20px; cursor: pointer; white-space: nowrap; }
-.segmented button.on { background: var(--color-surface); box-shadow: 0 1px 2px rgb(22 26 51 / 10%); color: var(--color-primary); font-weight: 600; }
+.segmented { display: inline-flex; height: 32px; padding: 2px; border-radius: var(--radius-control); background: var(--color-track); }
+.segmented button { padding: 0 12px; border: 0; border-radius: 4px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.segmented button:hover { color: var(--color-text); }
+.segmented button.on { background: var(--color-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); color: var(--color-primary); font-weight: 500; }
+.date-range { display: flex; align-items: center; gap: 8px; }
+.date-range i { color: var(--color-text-muted); font-size: 13px; font-style: normal; }
 .filter-actions { display: flex; gap: 8px; }
 
 .table-wrap { overflow-x: auto; }
 .table-wrap.loading .record-table { opacity: .45; }
-.record-table { min-width: 900px; }
-.review-cell { max-width: 340px; }
-.review-cell strong { font-size: 13px; }
-.review-cell p { margin: 2px 0 0; overflow: hidden; color: var(--color-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.record-table { min-width: 1040px; }
+.record-table th, .record-table td { padding-right: 12px; padding-left: 12px; }
+.record-table td { white-space: nowrap; }
+.review-cell { max-width: 300px; }
+.review-cell p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-cell small { display: flex; max-width: 300px; gap: 12px; margin-top: 3px; overflow: hidden; color: var(--color-text-muted); font-size: 12px; white-space: nowrap; }
 .prob-cell { white-space: nowrap; }
-.prob { display: inline-block; width: 56px; height: 6px; margin: 0 6px 0 8px; overflow: hidden; border-radius: 3px; background: var(--color-track); vertical-align: middle; }
+.prob { display: inline-block; width: 64px; height: 6px; margin-right: 8px; overflow: hidden; border-radius: 3px; background: var(--color-track); vertical-align: middle; }
 .prob i { display: block; height: 100%; border-radius: 3px; }
-.prob.fake i { background: var(--color-fake); }
-.prob.real i { background: var(--color-primary); }
-.prob-cell small { color: var(--color-text-muted); font-size: 12px; }
-.type-cell span { display: block; font-weight: 500; }
-.type-cell small { color: var(--color-text-muted); font-size: 12px; }
-.type-cell small.warn { color: var(--color-warn); }
-.time-cell, .user-cell { white-space: nowrap; }
-.op-cell { text-align: right; }
+.prob.high i { background: var(--color-fake); }
+.prob.mid i { background: var(--color-warn); }
+.prob.low i { background: var(--color-primary); }
+.prob-cell b { font-size: 13px; font-weight: 600; }
+.prob-cell b.high { color: var(--color-fake); }
+.prob-cell b.mid { color: var(--color-warn); }
+.prob-cell b.low { color: var(--color-text-secondary); }
+.behavior-cell { white-space: nowrap; }
+.behavior-cell.insufficient { color: var(--color-text-muted); }
+.time-cell { white-space: nowrap; }
+.op-head, .op-cell { text-align: right; }
 .retry { margin-left: auto; }
-.table-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 13px; }
+.table-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; color: var(--color-text-muted); font-size: 13px; }
 .pager { display: flex; align-items: center; gap: 10px; }
+.page-no { min-width: 48px; color: var(--color-text); text-align: center; }
+.foot-note { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; color: var(--color-text-muted); font-size: 12px; }
 
-@media (max-width: 1120px) {
-  .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .keyword-field { grid-column: span 2; }
+@media (max-width: 1240px) {
+  .filters, .filters.queue { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 860px) {
-  .filters { grid-template-columns: 1fr; }
-  .keyword-field { grid-column: auto; }
+  .filters, .filters.queue { grid-template-columns: 1fr; }
 }
 </style>

@@ -3,7 +3,7 @@
 // 传单项 tone 时该条用实色，否则按整组 tone 显示、selected 高亮
 import { percent } from '../labels';
 
-type Tone = 'primary' | 'behavior' | 'fake' | 'warn' | 'accent';
+type Tone = 'primary' | 'behavior' | 'fake' | 'warn' | 'success' | 'cyan' | 'neutral';
 defineProps<{ items: { key: string; label: string; value: number; text?: string; tone?: Tone }[]; selected?: string; tone?: Tone }>();
 </script>
 
@@ -18,19 +18,22 @@ defineProps<{ items: { key: string; label: string; value: number; text?: string;
 </template>
 
 <style scoped>
-.score-row { display: grid; grid-template-columns: 84px 1fr 52px; gap: 10px; align-items: center; margin: 10px 0; font-size: 13px; }
+.score-bars { display: flex; flex-direction: column; gap: 14px; }
+.score-row { display: grid; grid-template-columns: 84px 1fr 56px; gap: 12px; align-items: center; font-size: 13px; }
+.label { color: var(--color-text-secondary); }
 .track { height: 8px; overflow: hidden; border-radius: 4px; background: var(--color-track); }
-.track i { display: block; height: 100%; border-radius: 4px; background: color-mix(in srgb, var(--color-primary) 35%, var(--color-mix-base)); }
-.primary .track i { background: color-mix(in srgb, var(--color-primary) 35%, var(--color-mix-base)); }
+.track i { display: block; height: 100%; border-radius: 4px; background: var(--color-primary-soft-2); }
 .primary .selected .track i { background: var(--color-primary); }
-.behavior .track i { background: color-mix(in srgb, var(--color-behavior) 38%, var(--color-mix-base)); }
+.behavior .track i { background: color-mix(in srgb, var(--color-behavior) 30%, var(--color-mix-base)); }
 .behavior .selected .track i { background: var(--color-behavior); }
 .track i.solid.primary { background: var(--color-primary); }
 .track i.solid.behavior { background: var(--color-behavior); }
 .track i.solid.fake { background: var(--color-fake); }
 .track i.solid.warn { background: var(--color-warn); }
-.track i.solid.accent { background: var(--color-accent); }
-.selected { font-weight: 600; }
-.value { text-align: right; color: var(--color-text-muted); }
-.selected .value { color: var(--color-text); }
+.track i.solid.success { background: var(--color-success); }
+.track i.solid.cyan { background: var(--color-cyan); }
+.track i.solid.neutral { background: var(--color-line-strong); }
+.selected .label { color: var(--color-text); font-weight: 600; }
+.value { color: var(--color-text-muted); text-align: right; }
+.selected .value { color: var(--color-text); font-weight: 600; }
 </style>

@@ -4,7 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { AlertCircle, BarChart3, CheckCircle2, Cpu, KeyRound, LogOut, Palette, UserPlus, UserRound } from 'lucide-vue-next';
 import { ApiError, changePassword, createUser, getCurrentUser, getEvaluations, getEvaluationDetail, logout } from '../api/client';
 import { clearSession } from '../auth';
-import { applyPreferences, getPreferences, type DensityPreference, type ThemePreference } from '../preferences';
+import { accentOptions, applyPreferences, getPreferences, type AccentPreference, type DensityPreference, type ThemePreference } from '../preferences';
 import type { CurrentUserResponse, EvaluationResponse } from '../types';
 import ModelConfigurationView from './ModelConfigurationView.vue';
 import AppCard from '../components/AppCard.vue';
@@ -53,7 +53,7 @@ const splitLabels: Record<string, string> = { train: '训练集', val: '验证�
 
 function metric(value: number | null) { return value === null ? '指标不可用' : `${(value * 100).toFixed(1)}%`; }
 function roleLabel(role: string) { return ({ admin: '管理员', reviewer: '审核员', operator: '操作员' } as Record<string, string>)[role] ?? role; }
-function savePreferences() { applyPreferences(preferences.theme as ThemePreference, preferences.density as DensityPreference); accountSuccess.value = '界面偏好已保存到当前浏览器。'; }
+function savePreferences() { applyPreferences(preferences.theme as ThemePreference, preferences.density as DensityPreference, preferences.accent as AccentPreference); accountSuccess.value = '界面偏好已保存到当前浏览器。'; }
 
 async function loadSettings() {
   loading.value = true; accountError.value = ''; evaluationError.value = '';
@@ -148,6 +148,15 @@ onMounted(loadSettings);
             <label class="ui-field"><span>主题</span><select v-model="preferences.theme" class="ui-input"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
             <label class="ui-field"><span>列表密度</span><select v-model="preferences.density" class="ui-input"><option value="standard">标准</option><option value="compact">紧凑</option></select></label>
           </div>
+          <div class="ui-field accent-field">
+            <span>主题色</span>
+            <div class="accent-options" role="radiogroup" aria-label="主题色">
+              <label v-for="option in accentOptions" :key="option.value" :class="{ on: preferences.accent === option.value }">
+                <input v-model="preferences.accent" type="radio" name="accent" :value="option.value" class="sr-only" />
+                <i :style="{ background: option.color }"></i>{{ option.label }}
+              </label>
+            </div>
+          </div>
           <button type="button" class="btn primary" @click="savePreferences">保存界面偏好</button>
         </AppCard>
 
@@ -202,21 +211,20 @@ onMounted(loadSettings);
 
 <style scoped>
 .settings-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); align-items: start; gap: 16px; }
-.settings-anchor-nav { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
-.settings-anchor-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 9px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; }
+.settings-anchor-nav { position: sticky; top: calc(var(--header-height) + 16px); display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.settings-anchor-nav a { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: var(--radius-control); color: var(--color-text-secondary); font-size: 14px; text-decoration: none; }
 .settings-anchor-nav a:hover { background: var(--color-surface-muted); }
-.settings-anchor-nav a.active { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 600; }
-.settings-anchor-nav a.active svg { color: var(--color-behavior); }
+.settings-anchor-nav a.active { background: var(--color-primary-soft); color: var(--color-primary); font-weight: 500; }
 .settings-main { min-width: 0; }
 
 /* 账户分区：两张卡片等高，左卡底部放退出登录 */
 .account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px; }
 .account-card { display: flex; flex-direction: column; }
 .profile { display: flex; align-items: center; gap: 14px; }
-.profile-avatar { display: grid; flex: none; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 20px; font-weight: 700; }
-.profile strong { display: block; margin-bottom: 4px; font-size: 17px; }
+.profile-avatar { display: grid; flex: none; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: var(--color-primary); color: var(--color-on-primary); font-size: 22px; font-weight: 600; }
+.profile strong { display: block; margin-bottom: 4px; font-size: 18px; font-weight: 600; }
 .profile-facts { margin: 16px 0 0; font-size: 13px; }
-.profile-facts div { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed var(--color-line); }
+.profile-facts div { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--color-line); }
 .profile-facts dt { color: var(--color-text-muted); }
 .profile-facts dd { margin: 0; font-weight: 500; }
 .logout-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: auto; padding-top: 16px; }
@@ -226,27 +234,32 @@ onMounted(loadSettings);
 .password-form .btn { align-self: flex-start; margin-top: auto; }
 .form-row { display: grid; width: 100%; gap: 14px 16px; }
 .form-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#appearance .form-row { margin-bottom: 14px; }
+#appearance .form-row { max-width: 640px; margin-bottom: 18px; }
+.accent-field { margin-bottom: 20px; }
+.accent-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.accent-options label { display: inline-flex; cursor: pointer; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--color-line-strong); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; }
+.accent-options label.on { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-soft-2); color: var(--color-primary); }
+.accent-options i { width: 16px; height: 16px; border-radius: 4px; }
 
 .evaluation-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; }
 .evaluation-list { display: flex; flex-direction: column; gap: 8px; }
-.evaluation-list button { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
+.evaluation-list button { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
 .evaluation-list button:hover { border-color: var(--color-primary); }
-.evaluation-list button.selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.evaluation-list button.selected { border-color: var(--color-primary); background: var(--color-primary-soft); }
 .evaluation-list strong { font-size: 13px; }
 .evaluation-list span, .evaluation-list small { color: var(--color-text-muted); font-size: 12px; }
 .metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
-.metric-grid div { padding: 12px; border-radius: 10px; background: var(--color-primary-soft); }
+.metric-grid div { padding: 14px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); }
 .metric-grid div.empty { background: var(--color-surface-muted); }
 .metric-grid span { display: block; color: var(--color-text-muted); font-size: 12px; }
-.metric-grid strong { display: block; margin-top: 4px; color: var(--color-primary); font-size: 20px; }
+.metric-grid strong { display: block; margin-top: 4px; color: var(--color-text); font-size: 22px; font-weight: 600; }
 .metric-grid .empty strong { color: var(--color-text-muted); font-size: 14px; }
 h4 { margin: 0 0 10px; font-size: 14px; }
 .matrix-wrap { overflow-x: auto; }
 .matrix-wrap table { border-collapse: separate; border-spacing: 4px; font-size: 13px; }
 .matrix-wrap th { padding: 6px 10px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; text-align: center; white-space: nowrap; }
 .matrix-wrap tbody th { text-align: right; }
-.matrix-wrap td { min-width: 74px; padding: 12px; border-radius: 8px; font-weight: 600; text-align: center; }
+.matrix-wrap td { min-width: 80px; padding: 14px; border-radius: var(--radius-control); font-weight: 600; text-align: center; }
 .evaluation-boundary { display: flex; align-items: center; gap: 6px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--color-line); color: var(--color-warn); font-size: 12px; }
 
 @media (max-width: 1120px) {

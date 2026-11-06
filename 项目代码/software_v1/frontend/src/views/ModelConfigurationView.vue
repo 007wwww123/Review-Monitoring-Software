@@ -105,10 +105,10 @@ onMounted(loadModels);
 .models-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; }
 .list-title { margin: 0 0 8px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
 .version-list { display: flex; flex-direction: column; gap: 8px; }
-.model-version-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
+.model-version-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-text); font: inherit; text-align: left; cursor: pointer; }
 .model-version-row:hover { border-color: var(--color-primary); }
-.model-version-row.selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
-.model-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px; background: var(--color-brand-deep); color: var(--color-accent); }
+.model-version-row.selected { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.model-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 8px; background: var(--color-primary-soft); color: var(--color-primary); }
 .version-text { min-width: 0; }
 .version-text strong { display: block; font-size: 13px; }
 .version-text small { display: block; overflow: hidden; color: var(--color-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -123,11 +123,11 @@ onMounted(loadModels);
 .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
 h4 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 14px; }
 .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 0 0 18px; }
-.config-grid div { padding: 8px 12px; border-radius: 8px; background: var(--color-surface-muted); }
-.config-grid dt { display: flex; flex-direction: column; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.config-grid div { padding: 10px 12px; border-radius: var(--radius-control); background: var(--color-surface-muted); }
+.config-grid dt { display: flex; flex-direction: column; color: var(--color-text-secondary); font-size: 12px; }
 .config-grid code { color: var(--color-text-muted); font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; font-weight: 400; }
-.config-grid dd { margin: 4px 0 0; font-size: 13px; font-weight: 600; word-break: break-word; }
-.metrics-state { display: flex; gap: 12px; padding: 14px; border-radius: 10px; background: var(--color-primary-soft); color: var(--color-primary); }
+.config-grid dd { margin: 4px 0 0; font-size: 13px; font-weight: 500; word-break: break-word; }
+.metrics-state { display: flex; gap: 12px; padding: 14px; border: 1px solid var(--color-primary-soft-2); border-radius: var(--radius-card); background: var(--color-primary-soft); color: var(--color-primary); }
 .metrics-state p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
 .metric-pairs { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; font-size: 13px; }
 .metric-pairs dd { margin: 0; font-weight: 600; }

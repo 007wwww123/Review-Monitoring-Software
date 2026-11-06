@@ -1,5 +1,5 @@
 <template>
-  <!-- 登录页插图：语义流与行为流汇入门控融合，输出审核建议 -->
+  <!-- 登录页插图：语义流与行为流汇入门控融合，输出审核建议。画在主色渐变底上，颜色用半透明白和浅紫 -->
   <svg class="dual-stream" viewBox="0 0 420 220" role="img" aria-label="语义流与行为流经门控融合输出审核建议">
     <path class="band semantic" d="M0 50 C 120 50, 150 92, 236 98 L 236 126 C 150 118, 120 82, 0 82 Z" />
     <path class="band behavior" d="M0 150 C 120 150, 150 128, 236 126 L 236 140 C 150 142, 120 168, 0 168 Z" />
@@ -15,10 +15,10 @@
 
 <style scoped>
 .dual-stream { display: block; width: 100%; max-width: 440px; }
-.band.semantic { fill: #7fd0c4; } /* 深色品牌底上的语义流：主色提亮 */
-.band.behavior { fill: var(--color-behavior); }
-.band.out { fill: rgb(255 255 255 / 85%); }
-.gate { fill: rgb(255 255 255 / 10%); stroke: rgb(255 255 255 / 55%); stroke-width: 1.5; }
-.result { fill: var(--color-accent); }
-text { fill: rgb(255 255 255 / 72%); font-size: 12px; }
+.band.semantic { fill: rgb(255 255 255 / 78%); }
+.band.behavior { fill: #c396ed; }
+.band.out { fill: rgb(255 255 255 / 92%); }
+.gate { fill: rgb(255 255 255 / 14%); stroke: rgb(255 255 255 / 60%); stroke-width: 1.5; }
+.result { fill: #fff; }
+text { fill: rgb(255 255 255 / 78%); font-size: 12px; }
 </style>

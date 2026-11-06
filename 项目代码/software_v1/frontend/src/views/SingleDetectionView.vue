@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { AlertCircle, ArrowRight, Clock3, Plus, RotateCcw, ShieldAlert, Trash2 } from 'lucide-vue-next';
+import { AlertCircle, ArrowRight, Clock3, Info, Plus, RotateCcw, ShieldCheck, Trash2 } from 'lucide-vue-next';
 import { ApiError, submitSingleDetection } from '../api/client';
 import type { BehaviorHistoryItem, DetectionResultSummary, SingleDetectionRequest } from '../types';
 import AppCard from '../components/AppCard.vue';
 import GaugeChart from '../components/charts/GaugeChart.vue';
-import { actionLabels, authenticityLabels, behaviorLabels, percent, riskLabels, semanticLabels, shortId } from '../labels';
+import { actionLabels, actionTone, authenticityLabels, behaviorLabels, fakeProbabilityOf, percent, riskLabels, semanticLabels, shortId } from '../labels';
 
 type EditableHistory = { review_id: string; prod_id: string; rating: number; date: string; text: string };
 type FormState = { review_id: string; user_id: string; prod_id: string; rating: number; date: string; text: string; history: EditableHistory[] };
@@ -19,13 +19,15 @@ const taskId = ref('');
 const validationErrors = ref<Record<string, string>>({});
 
 // 单条接口只返回真实性与置信度，由此换算融合虚假概率
-const fakeProbability = computed(() => {
-  if (!result.value) return 0;
-  return result.value.authenticity === 'fake' ? result.value.confidence : 1 - result.value.confidence;
-});
-const actionTone = { keep: 'ok', review: 'warn', block: 'fake' } as const;
+const fakeProbability = computed(() => result.value ? fakeProbabilityOf(result.value) : 0);
 const errorCount = computed(() => Object.keys(validationErrors.value).length);
-const pipeline = ['评论文本与行为序列', 'ALBERT 语义编码', 'GRU 时序编码', '自适应门控融合', '审核建议'];
+const pipeline = [
+  { title: '评论文本与行为序列', desc: '提交的评论正文和此前的历史行为' },
+  { title: 'ALBERT 语义编码', desc: '判断文本的语义类型和虚假倾向' },
+  { title: 'GRU 时序编码', desc: '从历史行为序列中提取行为特征' },
+  { title: '自适应门控融合', desc: '按证据可用程度分配两路权重' },
+  { title: '审核建议', desc: '给出真实性判定与处置建议' },
+];
 
 function addHistory() {
   if (form.history.length >= 30) return;
@@ -106,7 +108,7 @@ async function submit() {
 
 <template>
   <section class="page single-page">
-    <nav class="crumb" aria-label="面包屑">检测工作台 / <b>单条评论检测</b></nav>
+    <nav class="crumb" aria-label="面包屑">发起检测 / <b>单条评论检测</b></nav>
     <header class="page-title">
       <h1>单条评论检测</h1>
       <span class="page-id">提交一条评论及可选的历史行为，获取语义与行为融合后的审核建议</span>
@@ -139,7 +141,7 @@ async function submit() {
           <template #extra>
             <button type="button" class="btn small" data-testid="add-history" :disabled="form.history.length >= 30" @click="addHistory"><Plus :size="14" />添加历史</button>
           </template>
-          <div v-if="!form.history.length" class="empty-hint history-empty"><Clock3 :size="20" />暂无历史行为，本次结果的行为证据将标记为“证据不足”。</div>
+          <div v-if="!form.history.length" class="empty-hint history-empty"><Clock3 :size="28" :stroke-width="1.5" />暂无历史行为，本次结果的行为证据将标记为“证据不足”。</div>
           <div v-for="(item, index) in form.history" :key="index" class="history-row">
             <div class="history-head">
               <strong>历史事件 {{ index + 1 }}</strong>
@@ -157,8 +159,8 @@ async function submit() {
         </AppCard>
 
         <div class="submit-bar">
-          <p><ShieldAlert :size="15" />用户标识会在服务端哈希后，用于查询目标时间之前的历史行为。</p>
-          <button class="btn primary submit-button" data-testid="submit" type="submit" :disabled="submitting">
+          <p><ShieldCheck :size="15" />用户标识会在服务端哈希后，用于查询目标时间之前的历史行为。</p>
+          <button class="btn primary large submit-button" data-testid="submit" type="submit" :disabled="submitting">
             <span v-if="submitting" class="spinner"></span><ArrowRight v-else :size="16" />{{ submitting ? '检测中…' : '开始检测' }}
           </button>
         </div>
@@ -170,7 +172,7 @@ async function submit() {
         <div v-if="!result" class="pipeline">
           <p class="pipeline-intro">每条评论都会依次经过以下环节：</p>
           <ol>
-            <li v-for="(step, index) in pipeline" :key="step"><b>{{ index + 1 }}</b>{{ step }}</li>
+            <li v-for="(step, index) in pipeline" :key="step.title"><b>{{ index + 1 }}</b><span><strong>{{ step.title }}</strong><small>{{ step.desc }}</small></span></li>
           </ol>
         </div>
 
@@ -183,18 +185,18 @@ async function submit() {
           <dl class="result-fields">
             <div><dt>置信度</dt><dd class="num">{{ percent(result.confidence) }}</dd></div>
             <div><dt>语义类型</dt><dd>{{ semanticLabels[result.semantic_type] }}</dd></div>
-            <div><dt>行为类型</dt><dd :class="{ warn: result.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[result.behavior_type] }}</dd></div>
+            <div><dt>行为类型</dt><dd :class="{ muted: result.behavior_type === 'insufficient_evidence' }">{{ behaviorLabels[result.behavior_type] }}</dd></div>
             <div><dt>风险来源</dt><dd>{{ riskLabels[result.risk_source] }}</dd></div>
             <div><dt>模型版本</dt><dd class="num">{{ result.model_version }}</dd></div>
             <div><dt>任务编号</dt><dd class="num" :title="taskId">{{ shortId(taskId, 6) }}</dd></div>
           </dl>
-          <p v-if="result.behavior_type === 'insufficient_evidence'" class="insufficient-note">
-            <AlertCircle :size="15" /><span><b>行为证据不足</b>未提供可用历史，该状态不表示用户行为正常。</span>
+          <p v-if="result.behavior_type === 'insufficient_evidence'" class="alert-bar warn insufficient-note">
+            <Info :size="15" /><span><b>行为证据不足</b>未提供可用历史，该状态不表示用户行为正常。</span>
           </p>
           <RouterLink :to="`/results/${result.result_id}`" class="btn primary full-analysis">查看完整分析<ArrowRight :size="15" /></RouterLink>
         </template>
 
-        <p class="boundary"><ShieldAlert :size="14" />检测结果仅作为辅助审核建议，不替代人工事实认定。</p>
+        <p class="boundary"><Info :size="14" />检测结果仅作为辅助审核建议，不替代人工事实认定。</p>
       </AppCard>
     </div>
   </section>
@@ -202,44 +204,42 @@ async function submit() {
 
 <style scoped>
 .single-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: 16px; }
-.fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
 .span-2 { grid-column: span 2; }
 .field-meta { display: flex; justify-content: space-between; gap: 8px; }
 .field-meta small { margin-left: auto; color: var(--color-text-muted); font-size: 12px; }
-.history-empty { padding: 22px 16px; border: 1px dashed var(--color-line); border-radius: 10px; }
-.history-row { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface-muted); }
-.history-row + .history-row { margin-top: 10px; }
+.history-empty { padding: 24px 16px; border: 1px dashed var(--color-line-strong); border-radius: var(--radius-card); background: var(--color-surface-muted); }
+.history-row { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--color-line); border-radius: var(--radius-card); background: var(--color-surface-muted); }
+.history-row + .history-row { margin-top: 12px; }
 .history-head { display: flex; align-items: center; justify-content: space-between; }
-.history-head strong { font-size: 13px; }
+.history-head strong { font-size: 14px; font-weight: 500; }
 .history-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .history-text { min-height: 64px; }
 .row-error { margin: 0; color: var(--color-fake); font-size: 12px; }
-.submit-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
-.submit-bar p { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--color-text-muted); font-size: 12px; }
-.submit-button { min-width: 132px; }
+.submit-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.submit-bar p { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--color-text-muted); font-size: 13px; }
+.submit-button { min-width: 140px; }
 
-.result-card { position: sticky; top: 22px; }
-.pipeline-intro { margin: 0 0 10px; color: var(--color-text-secondary); font-size: 13px; }
-.pipeline ol { position: relative; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.pipeline ol::before { position: absolute; top: 14px; bottom: 14px; left: 13px; width: 2px; background: var(--color-line); content: ""; }
-.pipeline li { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 0; font-size: 13px; }
-.pipeline li b { z-index: 1; display: grid; flex: none; width: 28px; height: 28px; place-items: center; border: 2px solid var(--color-surface); border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary); font-size: 12px; }
-.pipeline li:nth-child(2) b { background: var(--color-primary); color: var(--color-on-primary); }
-.pipeline li:nth-child(3) b { background: var(--color-behavior); color: #fff; }
-.pipeline li:last-child b { background: var(--color-accent); color: var(--color-on-accent); }
-.verdict-tags { display: flex; justify-content: center; gap: 8px; margin: 6px 0 14px; }
-.result-fields { display: grid; grid-template-columns: 1fr 1fr; margin: 0; overflow: hidden; border: 1px solid var(--color-line); border-radius: 10px; }
-.result-fields div { padding: 9px 12px; border-bottom: 1px solid var(--color-line); }
-.result-fields div:nth-child(odd) { border-right: 1px solid var(--color-line); }
-.result-fields div:nth-last-child(-n + 2) { border-bottom: 0; }
+.result-card { position: sticky; top: calc(var(--header-height) + 16px); }
+.pipeline-intro { margin: 0 0 12px; color: var(--color-text-secondary); font-size: 13px; }
+.pipeline ol { position: relative; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pipeline ol::before { position: absolute; top: 16px; bottom: 30px; left: 13px; width: 2px; background: var(--color-line); content: ""; }
+.pipeline li { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; }
+.pipeline li b { z-index: 1; display: grid; flex: none; width: 28px; height: 28px; place-items: center; border: 3px solid var(--color-surface); border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary); font-size: 12px; }
+.pipeline li:nth-child(3) b { background: var(--color-behavior-soft); color: var(--color-behavior); }
+.pipeline li:last-child b { background: var(--color-primary); color: var(--color-on-primary); }
+.pipeline li strong { display: block; font-size: 14px; font-weight: 500; line-height: 22px; }
+.pipeline li small { color: var(--color-text-muted); font-size: 12px; }
+.verdict-tags { display: flex; justify-content: center; gap: 8px; margin: 8px 0 16px; }
+.result-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; margin: 0; padding: 14px 16px; border-radius: var(--radius-card); background: var(--color-surface-muted); }
 .result-fields dt { color: var(--color-text-muted); font-size: 12px; }
-.result-fields dd { margin: 0; font-size: 14px; font-weight: 600; word-break: break-all; }
-.result-fields dd.warn { color: var(--color-warn); }
-.insufficient-note { display: flex; align-items: flex-start; gap: 6px; margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--color-warn-soft); color: var(--color-warn); font-size: 12px; }
-.insufficient-note svg { flex: none; margin-top: 2px; }
+.result-fields dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; word-break: break-all; }
+.result-fields dd.muted { color: var(--color-text-muted); }
+.insufficient-note { align-items: flex-start; margin: 12px 0 0; }
+.insufficient-note svg { margin-top: 2px; }
 .insufficient-note b { margin-right: 4px; }
-.full-analysis { width: 100%; margin-top: 14px; }
-.boundary { display: flex; align-items: center; gap: 6px; margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 12px; }
+.full-analysis { width: 100%; margin-top: 16px; }
+.boundary { display: flex; align-items: center; gap: 6px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 12px; }
 
 @media (max-width: 1120px) {
   .single-layout { grid-template-columns: 1fr; }

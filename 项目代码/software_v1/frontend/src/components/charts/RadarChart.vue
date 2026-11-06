@@ -21,12 +21,12 @@ const labels = computed(() => props.items.map((item, i) => {
 
 <template>
   <svg class="radar" viewBox="0 0 300 250" role="img" aria-label="语义相对匹配度雷达图">
-    <polygon v-for="(ring, i) in rings" :key="i" class="ring" :points="ring" />
+    <polygon v-for="(ring, i) in rings" :key="i" class="ring" :class="{ odd: i % 2 === 0 }" :points="ring" />
     <line v-for="(axis, i) in axes" :key="`a${i}`" class="axis" :x1="CX" :y1="CY" :x2="axis[0]" :y2="axis[1]" />
     <polygon class="area" :points="points.map((p) => p.join(',')).join(' ')" />
     <circle
       v-for="(p, i) in points" :key="`p${i}`" :cx="p[0]" :cy="p[1]"
-      :r="items[i].key === selected ? 6 : 3.5" :class="items[i].key === selected ? 'dot selected' : 'dot'"
+      :r="items[i].key === selected ? 5.5 : 3.5" :class="items[i].key === selected ? 'dot selected' : 'dot'"
     />
     <g v-for="item in labels" :key="item.key" :class="{ selected: item.key === selected }" class="label">
       <text :x="item.x" :y="item.y - 2" text-anchor="middle">{{ item.label }}</text>
@@ -37,11 +37,13 @@ const labels = computed(() => props.items.map((item, i) => {
 
 <style scoped>
 .radar { display: block; width: 100%; max-width: 320px; margin: 0 auto; }
-.ring, .axis { fill: none; stroke: var(--color-line); }
-.area { fill: var(--color-primary); fill-opacity: .12; stroke: var(--color-primary); stroke-width: 2; stroke-linejoin: round; }
+.ring { fill: var(--color-surface); stroke: var(--color-line); }
+.ring.odd { fill: var(--color-surface-muted); }
+.axis { stroke: var(--color-line); }
+.area { fill: var(--color-primary); fill-opacity: .16; stroke: var(--color-primary); stroke-width: 2; stroke-linejoin: round; }
 .dot { fill: var(--color-primary); }
-.dot.selected { fill: var(--color-accent); stroke: var(--color-primary); stroke-width: 2; }
+.dot.selected { fill: var(--color-surface); stroke: var(--color-primary); stroke-width: 3; }
 .label text { fill: var(--color-text-muted); font-size: 12px; }
-.label .value { fill: var(--color-text); font-size: 11px; font-variant-numeric: tabular-nums; }
-.label.selected text:first-child { fill: var(--color-primary); font-weight: 700; }
+.label .value { fill: var(--color-text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; }
+.label.selected text { fill: var(--color-primary); font-weight: 600; }
 </style>

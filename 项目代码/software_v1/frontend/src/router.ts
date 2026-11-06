@@ -18,6 +18,7 @@ export const router = createRouter({
     { path: '/models', redirect: '/settings#models' },
     { path: '/detections/single', component: SingleDetectionView },
     { path: '/detections/batch', component: BatchDetectionView },
+    { path: '/review', component: DetectionRecordsView, props: { mode: 'review' } },
     { path: '/results', component: DetectionRecordsView },
     { path: '/results/:resultId(\\d+)', component: DetectionResultDetailView },
   ],

@@ -9,7 +9,7 @@ import { applyPreferences, getPreferences } from './preferences';
 
 function bootstrap() {
   document.title = `${APP_NAME} ${APP_VERSION}`;
-  const preferences = getPreferences(); applyPreferences(preferences.theme, preferences.density);
+  const preferences = getPreferences(); applyPreferences(preferences.theme, preferences.density, preferences.accent);
   createApp(App).use(router).mount('#app');
 }
 bootstrap();
