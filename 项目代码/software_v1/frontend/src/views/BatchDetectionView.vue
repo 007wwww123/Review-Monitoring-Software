@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { AlertCircle, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Info, LoaderCircle, RotateCcw, Trash2, Upload } from 'lucide-vue-next';
+import { AlertCircle, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Info, Layers3, LoaderCircle, RotateCcw, Trash2, Upload } from 'lucide-vue-next';
 import { ApiError, getDetectionTask, submitBatchDetection } from '../api/client';
 import type { TaskStatus, TaskStatusResponse } from '../types';
 import { batchRowToRequest, parseBatchFile, validateBatchRows, type BatchPreviewRow } from '../utils/batch-parser';
 import AppCard from '../components/AppCard.vue';
+import PageHeader from '../components/layout/PageHeader.vue';
 import DonutChart from '../components/charts/DonutChart.vue';
 import { formatDateTime, shortId } from '../labels';
 
@@ -149,17 +150,15 @@ onBeforeUnmount(() => { pollingGeneration += 1; });
 
 <template>
   <section class="page batch-page">
-    <header class="page-title">
-      <h1>批量检测任务</h1>
-      <span class="page-id">导入评论文件，校验数据后提交统一检测任务</span>
-      <div class="page-actions">
+    <PageHeader title="批量检测任务" desc="导入评论文件，校验数据后提交统一检测任务" :icon="Layers3">
+      <template #actions>
         <a class="btn" :href="templateHref" download="batch-review-template.csv"><Download :size="15" />下载 CSV 模板</a>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
-    <div class="batch-layout">
-      <div class="stack">
-        <AppCard title="评论数据" subtitle="CSV 或 TSV 文件，单次最多 1000 条">
+    <div class="batch-layout" :class="{ loaded: rows.length }">
+      <div class="batch-main">
+        <AppCard title="评论数据" subtitle="CSV 或 TSV 文件，单次最多 1000 条" class="data-card">
           <template v-if="rows.length || fileErrors.length" #extra>
             <button type="button" class="btn small" @click="clearFile"><RotateCcw :size="14" />清空</button>
           </template>
@@ -276,7 +275,14 @@ onBeforeUnmount(() => { pollingGeneration += 1; });
 </template>
 
 <style scoped>
-.batch-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 16px; }
+/* 未导入文件时：第一行「评论数据 | 任务状态」等高，高度差由上传区吸收（内容居中），字段说明横跨整行。
+   导入后左侧是长表格，任务状态改回贴顶跟随滚动。batch-main 用 display: contents，让卡片直接参与网格 */
+.batch-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "data task" "spec spec"; align-items: start; gap: 16px; }
+.batch-main { display: contents; }
+.data-card { grid-area: data; }
+.spec-card { grid-area: spec; }
+.batch-layout:not(.loaded) .data-card { display: flex; flex-direction: column; align-self: stretch; }
+.batch-layout:not(.loaded) .upload-zone { flex: 1; justify-content: center; }
 .upload-zone { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 20px; border: 1px dashed var(--color-line-strong); border-radius: var(--radius-card); background: var(--color-surface-muted); cursor: pointer; text-align: center; transition: border-color .15s, background .15s; }
 .upload-zone:hover, .upload-zone.dragging { border-color: var(--color-primary); background: var(--color-primary-soft); }
 .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -319,7 +325,9 @@ tr.invalid td { background: var(--color-fake-soft); }
 .spin-icon { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.task-card { position: sticky; top: calc(var(--header-height) + 16px); }
+.task-card { grid-area: task; }
+.batch-layout:not(.loaded) .task-card { align-self: stretch; }
+.batch-layout.loaded .task-card { position: sticky; top: calc(var(--header-height) + 16px); }
 .steps { position: relative; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .steps::before { position: absolute; top: 16px; bottom: 30px; left: 13px; width: 2px; background: var(--color-line); content: ""; }
 .steps li { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; }
@@ -340,7 +348,7 @@ tr.invalid td { background: var(--color-fake-soft); }
 .request-error { margin: 12px 0 0; }
 
 @media (max-width: 1120px) {
-  .batch-layout { grid-template-columns: 1fr; }
-  .task-card { position: static; }
+  .batch-layout { grid-template-columns: 1fr; grid-template-areas: "data" "spec" "task"; }
+  .batch-layout.loaded .task-card { position: static; }
 }
 </style>

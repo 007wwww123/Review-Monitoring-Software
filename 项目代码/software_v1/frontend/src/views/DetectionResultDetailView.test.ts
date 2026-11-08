@@ -95,9 +95,11 @@ describe('DetectionResultDetailView', () => {
 
   it('shows verdict, process and evidence modules on one page', async () => {
     const wrapper = await mountDetail();
-    for (const selector of ['.verdict-card', '.summary-card', '.flow-card', '.semantic-card', '.behavior-card', '.fusion-card', '.metadata-card', '.limitations-card']) {
+    for (const selector of ['.verdict-card', '.summary-card', '.flow-card', '.semantic-card', '.behavior-card', '.fusion-card', '.limitations-card']) {
       expect(wrapper.find(selector).exists()).toBe(true);
     }
+    expect(wrapper.get('.facts').text()).toContain('商品标识');
+    expect(wrapper.get('.facts').text()).toContain('检测时间');
     expect(wrapper.find('.gauge').exists()).toBe(true);
     expect(wrapper.find('.donut').exists()).toBe(true);
   });

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { AlertCircle, ArrowRight, Clock3, Info, Plus, RotateCcw, ShieldCheck, Trash2 } from 'lucide-vue-next';
+import { computed, nextTick, reactive, ref } from 'vue';
+import { AlertCircle, ArrowRight, Clock3, FileSearch, Info, Plus, RotateCcw, ShieldCheck, Trash2 } from 'lucide-vue-next';
 import { ApiError, submitSingleDetection } from '../api/client';
 import type { BehaviorHistoryItem, DetectionResultSummary, SingleDetectionRequest } from '../types';
 import AppCard from '../components/AppCard.vue';
+import PageHeader from '../components/layout/PageHeader.vue';
 import GaugeChart from '../components/charts/GaugeChart.vue';
 import { actionLabels, actionTone, authenticityLabels, behaviorLabels, fakeProbabilityOf, percent, riskLabels, semanticLabels, shortId } from '../labels';
 
@@ -15,6 +16,8 @@ const form = reactive<FormState>(initialForm());
 const submitting = ref(false);
 const errorMessage = ref('');
 const result = ref<DetectionResultSummary | null>(null);
+// 结果卡在第一行右侧，提交按钮在页面底部；出结果后把结果卡滚进视野
+const resultCard = ref<{ $el: HTMLElement } | null>(null);
 const taskId = ref('');
 const validationErrors = ref<Record<string, string>>({});
 
@@ -95,6 +98,7 @@ async function submit() {
   try {
     const response = await submitSingleDetection(toPayload());
     result.value = response.result;
+    void nextTick(() => resultCard.value?.$el.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
     taskId.value = response.task.task_id;
   } catch (error) {
     errorMessage.value = error instanceof ApiError ? error.message : '检测请求失败，请稍后重试。';
@@ -108,17 +112,15 @@ async function submit() {
 
 <template>
   <section class="page single-page">
-    <header class="page-title">
-      <h1>单条评论检测</h1>
-      <span class="page-id">提交一条评论及可选的历史行为，获取语义与行为融合后的审核建议</span>
-      <div class="page-actions">
+    <PageHeader title="单条评论检测" desc="提交一条评论及可选的历史行为，获取语义与行为融合后的审核建议" :icon="FileSearch">
+      <template #actions>
         <button type="button" class="btn" @click="resetForm"><RotateCcw :size="15" />重置表单</button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <div class="single-layout">
-      <form class="stack" novalidate @submit.prevent="submit">
-        <AppCard title="评论信息" subtitle="带 * 的字段为必填项">
+      <form class="single-form" novalidate @submit.prevent="submit">
+        <AppCard title="评论信息" subtitle="带 * 的字段为必填项" class="info-card">
           <div v-if="errorCount" class="alert-bar" role="alert"><AlertCircle :size="16" />请检查表单中的 {{ errorCount }} 处问题。</div>
           <div v-if="errorMessage" class="alert-bar" role="alert"><AlertCircle :size="16" />{{ errorMessage }}</div>
 
@@ -130,13 +132,13 @@ async function submit() {
             <label class="ui-field span-2" :class="{ invalid: validationErrors.date }"><span>评论时间<em>*</em></span><input v-model="form.date" class="ui-input" type="datetime-local" /><em v-if="validationErrors.date" class="error-text">{{ validationErrors.date }}</em></label>
             <label class="ui-field span-2" :class="{ invalid: validationErrors.text }">
               <span>评论文本<em>*</em></span>
-              <textarea v-model="form.text" class="ui-input" maxlength="10001" rows="5" placeholder="请输入需要检测的原始评论内容"></textarea>
+              <textarea v-model="form.text" class="ui-input comment-text" maxlength="10001" rows="3" placeholder="请输入需要检测的原始评论内容"></textarea>
               <span class="field-meta"><em v-if="validationErrors.text" class="error-text">{{ validationErrors.text }}</em><small class="num">{{ form.text.length }} / 10000</small></span>
             </label>
           </div>
         </AppCard>
 
-        <AppCard title="历史行为" subtitle="可选，最多 30 条，只能是目标评论之前的事件">
+        <AppCard title="历史行为" subtitle="可选，最多 30 条，只能是目标评论之前的事件" class="history-card">
           <template #extra>
             <button type="button" class="btn small" data-testid="add-history" :disabled="form.history.length >= 30" @click="addHistory"><Plus :size="14" />添加历史</button>
           </template>
@@ -165,7 +167,7 @@ async function submit() {
         </div>
       </form>
 
-      <AppCard title="检测结果" :subtitle="result ? '融合模型输出摘要' : '提交后在此显示'" class="result-card" aria-live="polite">
+      <AppCard ref="resultCard" title="检测结果" :subtitle="result ? '融合模型输出摘要' : '提交后在此显示'" class="result-card" aria-live="polite">
         <template v-if="result" #extra><span class="tag ok">已完成</span></template>
 
         <div v-if="!result" class="pipeline">
@@ -202,8 +204,15 @@ async function submit() {
 </template>
 
 <style scoped>
-.single-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: start; gap: 16px; }
-.fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+/* 只有第一行左右配对（评论信息 | 检测结果），历史行为和提交栏横跨整行，两栏不会一高一矮。
+   第一行两张卡等高，高度差由评论文本框吸收；form 用 display: contents，让里面的卡片直接参与网格 */
+.single-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "info result" "history history" "submit submit"; align-items: start; gap: 16px; }
+.single-form { display: contents; }
+.info-card { display: flex; flex-direction: column; grid-area: info; align-self: stretch; }
+.history-card { grid-area: history; }
+.fields-grid { display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto 1fr; gap: 18px 20px; }
+/* 自然高度略小于右侧步骤，第一行的高度差总由文本框吸收，右卡不留空白 */
+.comment-text { flex: 1; min-height: 96px; }
 .span-2 { grid-column: span 2; }
 .field-meta { display: flex; justify-content: space-between; gap: 8px; }
 .field-meta small { margin-left: auto; color: var(--color-text-muted); font-size: 12px; }
@@ -215,11 +224,12 @@ async function submit() {
 .history-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .history-text { min-height: 64px; }
 .row-error { margin: 0; color: var(--color-fake); font-size: 12px; }
-.submit-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.submit-bar { display: flex; grid-area: submit; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: var(--radius-card); background: var(--color-surface); box-shadow: var(--shadow-card); }
 .submit-bar p { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--color-text-muted); font-size: 13px; }
 .submit-button { min-width: 140px; }
 
-.result-card { position: sticky; top: calc(var(--header-height) + 16px); }
+.result-card { display: flex; flex-direction: column; grid-area: result; align-self: stretch; }
+.pipeline { margin-bottom: 16px; }
 .pipeline-intro { margin: 0 0 12px; color: var(--color-text-secondary); font-size: 13px; }
 .pipeline ol { position: relative; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .pipeline ol::before { position: absolute; top: 16px; bottom: 30px; left: 13px; width: 2px; background: var(--color-line); content: ""; }
@@ -237,12 +247,12 @@ async function submit() {
 .insufficient-note { align-items: flex-start; margin: 12px 0 0; }
 .insufficient-note svg { margin-top: 2px; }
 .insufficient-note b { margin-right: 4px; }
-.full-analysis { width: 100%; margin-top: 16px; }
-.boundary { display: flex; align-items: center; gap: 6px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 12px; }
+.full-analysis { width: 100%; margin: 16px 0; }
+/* 右卡比左卡矮时，说明贴底，多出的高度落在步骤与说明之间 */
+.boundary { display: flex; align-items: center; gap: 6px; margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--color-line); color: var(--color-text-muted); font-size: 12px; }
 
 @media (max-width: 1120px) {
-  .single-layout { grid-template-columns: 1fr; }
-  .result-card { position: static; }
+  .single-layout { grid-template-columns: 1fr; grid-template-areas: "info" "history" "submit" "result"; }
 }
 @media (max-width: 860px) {
   .fields-grid, .history-fields { grid-template-columns: 1fr; }

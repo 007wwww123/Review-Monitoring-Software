@@ -1,11 +1,22 @@
 <script setup lang="ts">
-// 按天堆叠柱状图：每根柱子下段为真实、上段为疑似虚假，柱顶显示当天总数
-import { computed } from 'vue';
+// 按天堆叠柱状图：每根柱子下段为真实、上段为疑似虚假，柱顶显示当天总数。
+// 高度固定，宽度跟随容器（ResizeObserver），这样宽屏下文字和柱子不会被等比放大
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps<{ days: { key: string; label: string; fake: number; real: number }[] }>();
 
-const W = 640, H = 236, LEFT = 36, RIGHT = 8, TOP = 20, BOTTOM = 30;
-const plotW = W - LEFT - RIGHT, plotH = H - TOP - BOTTOM;
+const H = 260, LEFT = 36, RIGHT = 8, TOP = 20, BOTTOM = 30;
+const root = ref<HTMLElement | null>(null);
+const W = ref(640);
+const plotW = computed(() => W.value - LEFT - RIGHT);
+const plotH = H - TOP - BOTTOM;
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  if (!root.value || typeof ResizeObserver === 'undefined') return;
+  observer = new ResizeObserver(([entry]) => { if (entry.contentRect.width > 0) W.value = Math.round(entry.contentRect.width); });
+  observer.observe(root.value);
+});
+onBeforeUnmount(() => observer?.disconnect());
 // 纵轴上限取"好看"的整数，分 4 格
 const yMax = computed(() => {
   const max = Math.max(4, ...props.days.map((d) => d.fake + d.real));
@@ -14,8 +25,8 @@ const yMax = computed(() => {
 });
 const ticks = computed(() => [0, 1, 2, 3, 4].map((i) => ({ value: (yMax.value / 4) * i, y: TOP + plotH - (plotH / 4) * i })));
 const bars = computed(() => {
-  const band = plotW / Math.max(props.days.length, 1);
-  const width = Math.min(30, band * 0.46);
+  const band = plotW.value / Math.max(props.days.length, 1);
+  const width = Math.min(36, band * 0.4);
   const scale = (n: number) => (n / yMax.value) * plotH;
   return props.days.map((d, i) => {
     const x = LEFT + band * i + (band - width) / 2;
@@ -27,7 +38,8 @@ const bars = computed(() => {
 </script>
 
 <template>
-  <svg class="trend" :viewBox="`0 0 ${W} ${H}`" role="img" aria-label="按天统计的检测数量">
+  <div ref="root" class="trend-wrap">
+  <svg class="trend" :width="W" :height="H" :viewBox="`0 0 ${W} ${H}`" role="img" aria-label="按天统计的检测数量">
     <g v-for="t in ticks" :key="t.value">
       <line class="grid" :class="{ base: t.value === 0 }" :x1="LEFT" :x2="W - RIGHT" :y1="t.y" :y2="t.y" />
       <text class="axis" :x="LEFT - 8" :y="t.y + 4" text-anchor="end">{{ t.value }}</text>
@@ -40,10 +52,12 @@ const bars = computed(() => {
       <text class="axis" :x="b.cx" :y="H - 8" text-anchor="middle">{{ b.label }}</text>
     </g>
   </svg>
+  </div>
 </template>
 
 <style scoped>
-.trend { display: block; width: 100%; height: auto; }
+.trend-wrap { width: 100%; min-width: 0; }
+.trend { display: block; }
 .grid { stroke: var(--color-line); stroke-dasharray: 3 3; }
 .grid.base { stroke: var(--color-line-strong); stroke-dasharray: none; }
 .axis { fill: var(--color-text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }

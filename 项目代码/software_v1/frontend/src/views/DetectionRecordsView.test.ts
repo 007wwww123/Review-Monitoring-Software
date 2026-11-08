@@ -15,10 +15,11 @@ describe('DetectionRecordsView', () => {
     await settle();
     expect(wrapper.findAll('.record-table tbody tr')).toHaveLength(10);
     expect(wrapper.text()).toContain('共 26 条');
-    expect(wrapper.text()).toContain('1 / 3');
+    expect(wrapper.findAll('.page-btn').map((button) => button.text())).toEqual(['1', '2', '3']);
+    expect(wrapper.get('.page-btn.on').text()).toBe('1');
     await wrapper.get('button[aria-label="下一页"]').trigger('click');
     await settle();
-    expect(wrapper.text()).toContain('2 / 3');
+    expect(wrapper.get('.page-btn.on').text()).toBe('2');
     expect(wrapper.text()).toContain('显示 11–20');
   });
 
@@ -34,9 +35,9 @@ describe('DetectionRecordsView', () => {
     const wrapper = mount(DetectionRecordsView);
     await settle();
     await wrapper.get('.action-select').setValue('block');
-    await wrapper.findAll('.segmented button').find((button) => button.text() === '疑似虚假')!.trigger('click');
+    await wrapper.findAll('.auth-tabs button').find((button) => button.text().startsWith('疑似虚假'))!.trigger('click');
     await settle();
-    expect(wrapper.get('.segmented .on').text()).toBe('疑似虚假');
+    expect(wrapper.get('.auth-tabs .on').text()).toMatch(/^疑似虚假\d+$/);
     const labels = wrapper.findAll('.auth-tag');
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.every((item) => item.text() === '疑似虚假')).toBe(true);

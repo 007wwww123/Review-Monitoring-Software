@@ -7,7 +7,8 @@ import AppCard from '../components/AppCard.vue';
 import ScoreBars from '../components/ScoreBars.vue';
 import DonutChart from '../components/charts/DonutChart.vue';
 import TrendChart from '../components/charts/TrendChart.vue';
-import { SEMANTIC_ORDER, actionLabels, actionTone, authenticityLabels, fakeProbabilityOf, formatDateTime, parseServerTime, percent, semanticLabels } from '../labels';
+import PageHeader from '../components/layout/PageHeader.vue';
+import { BEHAVIOR_ORDER, SEMANTIC_ORDER, actionLabels, actionTone, authenticityLabels, behaviorLabels, fakeProbabilityOf, formatDateTime, parseServerTime, percent, semanticLabels } from '../labels';
 import { getSession } from '../auth';
 
 const records = ref<DetectionRecordItem[]>([]);
@@ -52,6 +53,12 @@ const semanticItems = computed(() => SEMANTIC_ORDER.map((key) => {
   const count = countBy((record) => record.semantic_type === key);
   return { key, label: semanticLabels[key], value: ratio(count), text: `${count} 条`, tone: 'primary' as const };
 }));
+// 证据不足单独用灰色，避免被读成一种行为结论
+const behaviorItems = computed(() => BEHAVIOR_ORDER.map((key) => {
+  const count = countBy((record) => record.behavior_type === key);
+  const label = key === 'insufficient_evidence' ? '证据不足' : behaviorLabels[key];
+  return { key, label, value: ratio(count), text: `${count} 条`, tone: key === 'insufficient_evidence' ? 'neutral' as const : 'behavior' as const };
+}));
 
 // 近 7 天（含今天）每天的检测数，按本地日期归并
 const trendDays = computed(() => {
@@ -71,6 +78,11 @@ const trendDays = computed(() => {
 });
 const trendTotal = computed(() => trendDays.value.reduce((sum, day) => sum + day.fake + day.real, 0));
 const today = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
+const greeting = (() => {
+  const hour = new Date().getHours();
+  return hour < 6 ? '夜深了' : hour < 12 ? '上午好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好';
+})();
+const latestAt = computed(() => records.value[0]?.created_at ?? '');
 
 async function loadOverview() {
   loading.value = true;
@@ -96,14 +108,24 @@ onMounted(loadOverview);
 
 <template>
   <section class="page overview-page">
-    <header class="page-title">
-      <h1>系统概览</h1>
-      <span class="page-id">{{ username ? `欢迎回来，${username}。` : '' }}今天是 {{ today }}</span>
-      <div class="page-actions">
-        <span class="tag dot service-tag" :class="serviceState.tone">{{ serviceState.label }}</span>
-        <button type="button" class="btn" :disabled="loading" @click="loadOverview"><RefreshCw :size="14" />刷新</button>
-      </div>
-    </header>
+    <PageHeader :title="username ? `${greeting}，${username}` : greeting" class="welcome">
+      <template #icon><span class="welcome-avatar">{{ (username || '审').slice(0, 1).toUpperCase() }}</span></template>
+      <template #title-extra><span class="tag dot service-tag" :class="serviceState.tone">{{ serviceState.label }}</span></template>
+      <template #desc>
+        今天是 {{ today }}<template v-if="!loading && sampleSize">，最近 {{ sampleSize }} 条检测中有 <RouterLink to="/review" class="desc-link num">{{ reviewCount }} 条</RouterLink>建议人工复核</template>。
+      </template>
+      <template #actions>
+        <dl class="head-stats">
+          <div><dt>检测模型</dt><dd class="text"><span class="status-dot" :class="modelState === '已加载' ? 'ok' : 'warn'"></span>{{ modelState }}</dd></div>
+          <div>
+            <dt>统计范围<span class="tip" tabindex="0" aria-label="统计口径"><Info :size="13" /><span class="tip-body">统计口径：当前加载的最近 100 条记录。页面统计用于工作量观察，不代表模型效果评估；检测结果仅辅助审核，不替代人工认定。</span></span></dt>
+            <dd class="text num">最近 {{ sampleSize || 100 }} 条</dd>
+          </div>
+          <div><dt>最近检测</dt><dd class="text num">{{ latestAt ? formatDateTime(latestAt) : '—' }}</dd></div>
+        </dl>
+        <button type="button" class="btn refresh" :disabled="loading" @click="loadOverview"><RefreshCw :size="14" />刷新</button>
+      </template>
+    </PageHeader>
 
     <div v-if="errorMessage" class="alert-bar" role="alert">
       <AlertCircle :size="16" />{{ errorMessage }}
@@ -156,15 +178,10 @@ onMounted(loadOverview);
       <AppCard title="语义类型分布" subtitle="ALBERT 语义匹配度最高的类型">
         <ScoreBars :items="semanticItems" />
       </AppCard>
-      <AppCard title="运行状态" subtitle="来自健康检查接口">
-        <dl class="runtime">
-          <div><dt>接口服务</dt><dd><span class="status-dot" :class="health ? 'ok' : 'fake'"></span>{{ health ? '可访问' : '不可访问' }}</dd></div>
-          <div><dt>检测模型</dt><dd><span class="status-dot" :class="modelState === '已加载' ? 'ok' : 'warn'"></span>{{ modelState }}</dd></div>
-          <div><dt>统计范围</dt><dd>最近 100 条</dd></div>
-        </dl>
+      <AppCard title="行为证据分布" subtitle="GRU 行为流给出的类型，证据不足不等于行为正常">
+        <ScoreBars :items="behaviorItems" />
       </AppCard>
     </div>
-    <p class="scope-note"><Info :size="14" />统计口径：当前加载的最近 100 条记录。页面统计用于工作量观察，不代表模型效果评估；检测结果仅辅助审核，不替代人工认定。</p>
 
     <div class="row-bottom">
       <AppCard title="最近检测">
@@ -223,14 +240,13 @@ onMounted(loadOverview);
 .legend i.real { background: var(--color-primary); }
 .legend b { color: var(--color-text); font-weight: 600; }
 
-.row-dist { margin-bottom: 10px; }
-.runtime { margin: 0; }
-.runtime div { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--color-line); font-size: 14px; }
-.runtime div:first-child { padding-top: 2px; }
-.runtime div:last-child { border-bottom: 0; }
-.runtime dt { color: var(--color-text-secondary); }
-.runtime dd { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 500; }
-.scope-note { display: flex; align-items: center; gap: 6px; margin: 0 0 16px; color: var(--color-text-muted); font-size: 12px; }
+.row-dist { margin-bottom: 16px; }
+
+/* 欢迎页头：圆形头像 + 问候；右侧运行信息与刷新之间留出间隔 */
+.welcome-avatar { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-behavior))); color: var(--color-on-primary); font-size: 20px; font-weight: 600; }
+.desc-link { margin: 0 2px; color: var(--color-primary); font-weight: 500; text-decoration: none; }
+.desc-link:hover { color: var(--color-primary-hover); }
+.refresh { margin-left: 16px; }
 
 .row-bottom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); align-items: stretch; gap: 16px; }
 .recent { display: flex; flex-direction: column; margin: -4px 0; }

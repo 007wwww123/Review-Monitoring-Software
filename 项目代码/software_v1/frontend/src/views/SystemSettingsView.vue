@@ -8,6 +8,8 @@ import { accentOptions, applyPreferences, getPreferences, type AccentPreference,
 import type { CurrentUserResponse, EvaluationResponse } from '../types';
 import ModelConfigurationView from './ModelConfigurationView.vue';
 import AppCard from '../components/AppCard.vue';
+import PageHeader from '../components/layout/PageHeader.vue';
+import { NAVIGATION, isGroup } from '../navigation';
 import { authenticityLabels, formatDateTime } from '../labels';
 
 const router = useRouter();
@@ -47,6 +49,8 @@ const sectionMeta: Record<SettingsSection, { title: string; desc: string }> = {
   evaluations: { title: '评估历史', desc: '只读展示已保存的历史评估报告' },
 };
 const meta = computed(() => sectionMeta[activeSection.value]);
+// 页头图标与侧栏菜单一致
+const sectionIcon = computed(() => NAVIGATION.flatMap((entry) => isGroup(entry) ? entry.children : [entry]).find((leaf) => leaf.key === activeSection.value)?.icon);
 // 混淆矩阵按数值深浅着色
 const matrixMax = computed(() => Math.max(1, ...(matrix.value?.values.flat() ?? [0])));
 const cellStyle = (value: number) => ({ background: `color-mix(in srgb, var(--color-primary) ${Math.round((value / matrixMax.value) * 70) + 6}%, var(--color-surface))`, color: value / matrixMax.value > 0.5 ? 'var(--color-on-primary)' : 'var(--color-text)' });
@@ -99,10 +103,7 @@ onMounted(loadSettings);
 
 <template>
   <section class="page settings-page">
-    <header class="page-title">
-      <h1>{{ meta.title }}</h1>
-      <span class="page-id">{{ meta.desc }}</span>
-    </header>
+    <PageHeader :title="meta.title" :desc="meta.desc" :icon="sectionIcon" />
 
     <div class="settings-main" :class="`section-${activeSection}`">
       <div v-if="accountError && (activeSection === 'account' || activeSection === 'users')" class="alert-bar settings-message is-error" role="alert"><AlertCircle :size="16" />{{ accountError }}</div>
